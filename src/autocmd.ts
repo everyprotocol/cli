@@ -116,7 +116,7 @@ export function generateCommandFromDetail(command: Command, functionDetail: Cont
   let description = functionDetail.description;
   if (functionDetail.inputs.length > 0) {
     const signature = `${functionDetail.name}(${functionDetail.inputs.map((i) => i.type).join(", ")})`;
-    description = `${description}`;
+    description = `${description} [${signature}]`;
   }
 
   // Create the command
@@ -127,6 +127,21 @@ export function generateCommandFromDetail(command: Command, functionDetail: Cont
     leafCommand.argument(`<${input.name}>`, input.description);
   });
 
+  // Add common options based on function type
+  const isViewFunction = functionDetail.stateMutability === 'view' || functionDetail.stateMutability === 'pure';
+  
+  // Add universe option for all functions
+  leafCommand.option('-u, --universe <universe>', 'Universe URL or name');
+  
+  // Add additional options for write functions
+  if (!isViewFunction) {
+    leafCommand
+      .option('-a, --account <address>', 'Account address to use for the transaction')
+      .option('-k, --private-key <key>', 'Private key to sign the transaction')
+      .option('-p, --password <password>', 'Password to decrypt the private key')
+      .option('--pf, --password-file <file>', 'File containing the password to decrypt the private key');
+  }
+
   // Set the action handler
   leafCommand.action((...args) => {
     // Last argument is the Command object
@@ -134,7 +149,16 @@ export function generateCommandFromDetail(command: Command, functionDetail: Cont
     // Extract the actual arguments
     const functionArgs = args;
 
+    // Validate options for write functions
+    if (!isViewFunction) {
+      if (!options.account && !options.privateKey) {
+        console.error('Error: Either --account (-a) or --private-key (-k) must be provided for write functions');
+        process.exit(1);
+      }
+    }
+
     console.log(`Executing ${functionDetail.name} with args:`, functionArgs);
+    console.log(`Options:`, options);
     // Here you would add the actual contract call logic
   });
 
