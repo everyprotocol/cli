@@ -1,7 +1,16 @@
 import { Command, type OptionValues } from "commander";
 import fs from "fs";
 import path from "path";
-import { createPublicClient, http, parseAbi, getContract, type PublicClient, type Address } from "viem";
+import { 
+  createPublicClient, 
+  http, 
+  parseAbi, 
+  getContract, 
+  createWalletClient,
+  privateKeyToAccount,
+  type PublicClient, 
+  type Address 
+} from "viem";
 import dotenv from "dotenv";
 import { parse as parseTOML } from "@iarna/toml";
 import os from "os";
@@ -166,9 +175,10 @@ export function generateCommandFromDetail(command: Command, functionDetail: Cont
         const result = await callFunction(functionDetail, functionArgs, options);
         console.log(`Result:`, result);
       } else {
-        // For write functions (to be implemented)
-        console.log(`Write function execution not yet implemented`);
-        console.log(`Options:`, options);
+        // For write functions, use sendTransaction
+        console.log(`Sending transaction to ${functionDetail.contractName}...`);
+        const txHash = await sendTransaction(functionDetail, functionArgs, options);
+        console.log(`Transaction hash:`, txHash);
       }
     } catch (error) {
       console.error(`Error executing function:`, error);
@@ -366,7 +376,117 @@ function getPublicClient(universeName: string): PublicClient {
   });
 }
 
-// ai! write a sendTransaction function for write functions
+/**
+ * Send a transaction to a contract (for non-view functions)
+ * @param functionDetail - Details of the function to call
+ * @param args - Arguments to pass to the function
+ * @param options - Command options including universe and account details
+ * @returns Promise resolving to the transaction hash
+ */
+async function sendTransaction(functionDetail: ContractFunctionDetail, args: any[], options: any): Promise<string> {
+  const universeName = options.universe;
+  if (!universeName) {
+    throw new Error("Universe option is required (--universe, -u)");
+  }
+
+  // Load universe configuration
+  const universes = loadUniverseConfigs();
+  const universe = universes.get(universeName);
+
+  if (!universe) {
+    throw new Error(`Universe "${universeName}" not found in configuration`);
+  }
+
+  // Get contract address
+  const contractKey = functionDetail.contractName
+    .replace(/^I/, "")
+    .replace(/([A-Z])/g, "_$1")
+    .toLowerCase()
+    .replace(/^_/, "");
+
+  const rawContractAddress = universe.contracts[contractKey] || universe.contracts[functionDetail.contractName];
+  if (!rawContractAddress) {
+    throw new Error(
+      `Contract "${functionDetail.contractName}" (key: ${contractKey}) not found in universe "${universeName}"`
+    );
+  }
+
+  // Ensure the address is properly formatted as a hex string
+  const contractAddress =
+    typeof rawContractAddress === "string"
+      ? rawContractAddress.startsWith("0x")
+        ? rawContractAddress
+        : `0x${rawContractAddress}`
+      : `0x${rawContractAddress.toString(16)}`;
+
+  // Create public client
+  const publicClient = getPublicClient(universeName);
+
+  // Validate account information
+  if (!options.account && !options.privateKey) {
+    throw new Error("Either --account (-a) or --private-key must be provided for write functions");
+  }
+
+  // Create wallet client based on provided options
+  let walletClient;
+  
+  if (options.privateKey) {
+    // Use private key if provided
+    const privateKey = options.privateKey.startsWith("0x") 
+      ? options.privateKey 
+      : `0x${options.privateKey}`;
+      
+    walletClient = createWalletClient({
+      account: privateKeyToAccount(privateKey as `0x${string}`),
+      chain: publicClient.chain,
+      transport: http(universe.rpcUrl),
+    });
+  } else if (options.account) {
+    // Use account address if provided (assumes it's unlocked in the node)
+    walletClient = createWalletClient({
+      account: options.account as `0x${string}`,
+      chain: publicClient.chain,
+      transport: http(universe.rpcUrl),
+    });
+  }
+
+  if (!walletClient) {
+    throw new Error("Failed to create wallet client");
+  }
+
+  try {
+    console.log({ 
+      args, 
+      options, 
+      contractKey, 
+      contractAddress, 
+      functionName: functionDetail.name 
+    });
+
+    // Prepare the transaction
+    const { request } = await publicClient.simulateContract({
+      address: contractAddress as Address,
+      abi: parseAbi([`function ${functionDetail.signature}`]),
+      functionName: functionDetail.name,
+      args: args as any[],
+      account: walletClient.account,
+    });
+
+    // Send the transaction
+    const hash = await walletClient.writeContract(request);
+    console.log(`Transaction sent: ${hash}`);
+
+    // Wait for transaction to be mined
+    console.log("Waiting for transaction to be mined...");
+    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+    console.log("Transaction mined:", receipt);
+
+    return hash;
+  } catch (error) {
+    console.error(`Error sending transaction to ${functionDetail.name}:`, error);
+    throw error;
+  }
+}
 
 /**
  * Call a view function on a contract
