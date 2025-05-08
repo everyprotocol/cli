@@ -378,10 +378,16 @@ async function callFunction(functionDetail: ContractFunctionDetail, args: any[],
   }
 
   // Get contract address
-  // ai! the key to contract address in config file can be calculated like this IKindRegistry => kind_registry
-  const contractAddress = universe.contracts[functionDetail.contractName];
+  // Convert contract name to config key format (e.g., IKindRegistry -> kind_registry)
+  const contractKey = functionDetail.contractName
+    .replace(/^I/, '') // Remove leading 'I' if present
+    .replace(/([A-Z])/g, '_$1') // Add underscore before capital letters
+    .toLowerCase() // Convert to lowercase
+    .replace(/^_/, ''); // Remove leading underscore if present
+    
+  const contractAddress = universe.contracts[contractKey] || universe.contracts[functionDetail.contractName];
   if (!contractAddress) {
-    throw new Error(`Contract "${functionDetail.contractName}" not found in universe "${universeName}"`);
+    throw new Error(`Contract "${functionDetail.contractName}" (key: ${contractKey}) not found in universe "${universeName}"`);
   }
 
   // Create public client
