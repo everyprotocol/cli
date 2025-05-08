@@ -37,10 +37,8 @@ export function extractFunctions(abi: any): ContractFunction[] {
     .filter((item: any) => item.type === "function")
     .map((func: any) => {
       const signature = toFunctionSignature(func);
-      // Handle case where metadata might not exist or have expected structure
-      const metadata = abi.metadata?.output || { userdoc: { methods: {} }, devdoc: { methods: {} } };
-      const userdoc = metadata.userdoc?.methods?.[signature] || {};
-      const devdoc = metadata.devdoc?.methods?.[signature] || {};
+      const userdoc = abi.metdata.output.userdoc.methods[signature] || {};
+      const devdoc = abi.metdata.output.devdoc.methods[signature] || {};
       return { ...func, _metadata: { signature, ...userdoc, ...devdoc } } as ContractFunction;
     });
 }
