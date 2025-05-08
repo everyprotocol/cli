@@ -1,6 +1,8 @@
 import { Command, type OptionValues } from "commander";
 import fs from "fs";
 import path from "path";
+import { createPublicClient, http, parseAbi, getContract, type PublicClient, type Address } from "viem";
+import dotenv from "dotenv";
 
 /**
  * Represents a function from a contract ABI with its documentation
@@ -140,9 +142,11 @@ export function generateCommandFromDetail(command: Command, functionDetail: Cont
   }
 
   // Set the action handler
-  leafCommand.action(function () {
+  leafCommand.action(async function () {
     const options = this.opts();
     const functionArgs = this.args;
+    
+    // Validate options for write functions
     if (!isViewFunction) {
       if (!options.account && !options.privateKey) {
         console.error("Error: Either --account (-a) or --private-key (-k) must be provided for write functions");
@@ -151,17 +155,154 @@ export function generateCommandFromDetail(command: Command, functionDetail: Cont
     }
 
     console.log(`Executing ${functionDetail.name} with args:`, functionArgs);
-    console.log(`Options:`, options);
-    // Here you would add the actual contract call logic
+    
+    try {
+      if (isViewFunction) {
+        // For view functions, use callFunction
+        console.log(`Calling view function on ${functionDetail.contractName}...`);
+        const result = await callFunction(functionDetail, functionArgs, options);
+        console.log(`Result:`, result);
+      } else {
+        // For write functions (to be implemented)
+        console.log(`Write function execution not yet implemented`);
+        console.log(`Options:`, options);
+      }
+    } catch (error) {
+      console.error(`Error executing function:`, error);
+      process.exit(1);
+    }
   });
 
   return leafCommand;
 }
 
-// ai! implement a callFunction function as a general action for view functions
-// the target contract address is determinted from config file, queried by the --universe value
-// the function signature is arealdy determined in the function detail
-// use viem framework for contract interaction
+/**
+ * Interface for universe configuration
+ */
+interface UniverseConfig {
+  name: string;
+  rpcUrl: string;
+  contracts: Record<string, string>; // contractName -> address
+}
+
+/**
+ * Load universe configurations from config file or environment
+ * @returns Map of universe configurations
+ */
+function loadUniverseConfigs(): Map<string, UniverseConfig> {
+  // Load environment variables from .env file if it exists
+  dotenv.config();
+  
+  const configs = new Map<string, UniverseConfig>();
+  
+  // Try to load from config file
+  try {
+    const configPath = path.resolve(process.cwd(), 'config.json');
+    if (fs.existsSync(configPath)) {
+      const configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      
+      // Process each universe in the config
+      for (const [name, config] of Object.entries(configData.universes || {})) {
+        configs.set(name, config as UniverseConfig);
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to load config.json:', error);
+  }
+  
+  // Add environment-based configuration if available
+  const envUniverseName = process.env.UNIVERSE_NAME;
+  const envRpcUrl = process.env.RPC_URL;
+  
+  if (envUniverseName && envRpcUrl) {
+    // Extract contract addresses from environment variables
+    // Format: CONTRACT_ADDRESS_<CONTRACT_NAME>=0x...
+    const contracts: Record<string, string> = {};
+    for (const [key, value] of Object.entries(process.env)) {
+      if (key.startsWith('CONTRACT_ADDRESS_') && value) {
+        const contractName = key.replace('CONTRACT_ADDRESS_', '');
+        contracts[contractName] = value;
+      }
+    }
+    
+    configs.set(envUniverseName, {
+      name: envUniverseName,
+      rpcUrl: envRpcUrl,
+      contracts
+    });
+  }
+  
+  return configs;
+}
+
+/**
+ * Get a public client for the specified universe
+ * @param universeName - Name of the universe to connect to
+ * @returns Public client instance
+ */
+function getPublicClient(universeName: string): PublicClient {
+  const universes = loadUniverseConfigs();
+  const universe = universes.get(universeName);
+  
+  if (!universe) {
+    throw new Error(`Universe "${universeName}" not found in configuration`);
+  }
+  
+  return createPublicClient({
+    transport: http(universe.rpcUrl)
+  });
+}
+
+/**
+ * Call a view function on a contract
+ * @param functionDetail - Details of the function to call
+ * @param args - Arguments to pass to the function
+ * @param options - Command options including universe
+ * @returns Promise resolving to the function result
+ */
+async function callFunction(
+  functionDetail: ContractFunctionDetail,
+  args: any[],
+  options: any
+): Promise<any> {
+  const universeName = options.universe;
+  if (!universeName) {
+    throw new Error('Universe option is required (--universe, -u)');
+  }
+  
+  // Load universe configuration
+  const universes = loadUniverseConfigs();
+  const universe = universes.get(universeName);
+  
+  if (!universe) {
+    throw new Error(`Universe "${universeName}" not found in configuration`);
+  }
+  
+  // Get contract address
+  const contractAddress = universe.contracts[functionDetail.contractName];
+  if (!contractAddress) {
+    throw new Error(`Contract "${functionDetail.contractName}" not found in universe "${universeName}"`);
+  }
+  
+  // Create public client
+  const publicClient = getPublicClient(universeName);
+  
+  // Create contract instance
+  const contract = getContract({
+    address: contractAddress as Address,
+    abi: parseAbi([`function ${functionDetail.signature}`]),
+    publicClient
+  });
+  
+  try {
+    // Call the function
+    const result = await contract.read[functionDetail.name](args);
+    return result;
+  } catch (error) {
+    console.error(`Error calling ${functionDetail.name}:`, error);
+    throw error;
+  }
+}
 
 /**
  * Extracts NatSpec documentation from ABI
