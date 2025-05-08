@@ -1,8 +1,8 @@
 import { Command } from "commander";
 import path from "path";
 import fs from "fs";
-import { processAbi, generateCommandFromDetail, ContractFunctionDetail } from "./autocmd";
-import { CommandConfig } from "./types";
+import { processAbi, generateCommandFromDetail, type ContractFunctionDetail } from "./autocmd";
+import { type CommandConfig } from "./types";
 
 /**
  * Configures a level 1 subcommand with filtered functions from an ABI file
@@ -10,13 +10,10 @@ import { CommandConfig } from "./types";
  * @param config - Configuration for the command
  * @returns The configured program
  */
-export function configureSubCommand(
-  program: Command,
-  config: CommandConfig
-): Command {
+export function configureSubCommand(program: Command, config: CommandConfig): Command {
   try {
     const { name, abiFile, rename = (func) => func, filter } = config;
-    
+
     const abiPath = path.resolve(process.cwd(), "abis", abiFile);
     const abiContent = fs.readFileSync(abiPath, "utf8");
     const abi = JSON.parse(abiContent);

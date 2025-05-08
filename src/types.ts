@@ -1,4 +1,6 @@
-import { ContractFunctionDetail } from "./autocmd";
+// ai! move ContractFunctionDetail to this file
+
+import type { ContractFunctionDetail } from "./autocmd";
 
 export interface CommandConfig {
   name: string;
@@ -15,6 +17,7 @@ export interface UniverseConfig {
 
 export interface EveryConfig {
   general: {
+    // ai! defaultUniverse => default_universe
     defaultUniverse: string;
   };
   universes: Record<

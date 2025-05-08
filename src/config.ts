@@ -3,7 +3,7 @@ import path from "path";
 import os from "os";
 import dotenv from "dotenv";
 import { parse as parseTOML } from "@iarna/toml";
-import { EveryConfig, UniverseConfig } from "./types";
+import type { EveryConfig, UniverseConfig } from "./types";
 
 // Cache for universe configs to avoid repeated loading
 let universeConfigsCache: Map<string, UniverseConfig> | null = null;
