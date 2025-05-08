@@ -33,9 +33,46 @@ function configureSubCommand(
     const contractName = path.basename(abiFile, path.extname(abiFile));
     const functionDetails = processAbi(abi, contractName);
     const filteredFunctions = functionDetails.filter(filter);
+    
+    // Group functions by their command name to avoid duplicates
+    const groupedByName = new Map<string, ContractFunctionDetail[]>();
+    
+    filteredFunctions.forEach(func => {
+      // Apply the rename function to get the command name
+      const baseName = func.name;
+      const commandName = func.commandPath[func.commandPath.length - 1];
+      
+      if (!groupedByName.has(commandName)) {
+        groupedByName.set(commandName, []);
+      }
+      groupedByName.get(commandName)!.push(func);
+    });
+    
     const level1Command = program.command(name).description(`${name} commands for ${contractName}`);
-    filteredFunctions.forEach((func) => {
-      generateCommandFromDetail(level1Command, func);
+    
+    // Create commands, making them unique if needed
+    groupedByName.forEach((funcs, commandName) => {
+      if (funcs.length === 1) {
+        // Only one function with this name, use it directly
+        generateCommandFromDetail(level1Command, funcs[0]);
+      } else {
+        // Multiple functions with the same name, create a subcommand group
+        const subCommand = level1Command.command(commandName).description(`${commandName} operations`);
+        
+        // Add each function with a unique suffix based on its signature
+        funcs.forEach((func, index) => {
+          // Create a modified function detail with a unique command path
+          const uniqueFunc = { ...func };
+          
+          // Create a unique name based on parameter types
+          const paramTypes = func.inputs.map(input => input.type.replace(/\[\]$/, 'array').replace(/^uint/, 'u').replace(/^bytes/, 'b'));
+          const uniqueName = paramTypes.length > 0 ? `with-${paramTypes.join('-')}` : `variant-${index + 1}`;
+          
+          uniqueFunc.commandPath = [...func.commandPath.slice(0, -1), uniqueName];
+          
+          generateCommandFromDetail(subCommand, uniqueFunc);
+        });
+      }
     });
     return program;
   } catch (error) {
@@ -49,18 +86,18 @@ configureSubCommand(
   program,
   "unique",
   "IElementRegistry.json",
-  (func) => func.substring("unique".length),
+  (func) => func,  // Keep original function names
   (func) => func.name.startsWith("unique")
 );
 configureSubCommand(
   program,
   "value",
   "IElementRegistry.json",
-  (func) => func.substring("value".length),
+  (func) => func,  // Keep original function names
   (func) => func.name.startsWith("value")
 );
-configureSubCommand(program, "set", "ISetRegistry.json", (func) => func.substring("set".length));
-configureSubCommand(program, "kind", "IKindRegistry.json", (func) => func.substring("kind".length));
+configureSubCommand(program, "set", "ISetRegistry.json");
+configureSubCommand(program, "kind", "IKindRegistry.json");
 
 // // Example of configuring commands from an ABI file
 // // You would replace this with actual ABI paths

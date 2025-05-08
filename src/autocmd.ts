@@ -106,10 +106,20 @@ export function processAbi(abi: any, contractName: string): ContractFunctionDeta
  * @param functionDetail - The function detail object
  */
 export function generateCommandFromDetail(command: Command, functionDetail: ContractFunctionDetail): Command {
-  // Create the command with the last part of the path
+  // Get the last part of the command path
+  const commandName = functionDetail.commandPath[functionDetail.commandPath.length - 1];
+  
+  // Create a more descriptive command description that includes signature info
+  let description = functionDetail.description;
+  if (functionDetail.inputs.length > 0) {
+    const signature = `${functionDetail.name}(${functionDetail.inputs.map(i => i.type).join(', ')})`;
+    description = `${description} [${signature}]`;
+  }
+  
+  // Create the command
   const leafCommand = command
-    .command(functionDetail.commandPath[functionDetail.commandPath.length - 1])
-    .description(functionDetail.description);
+    .command(commandName)
+    .description(description);
 
   // Add arguments for each input parameter
   functionDetail.inputs.forEach((input) => {
