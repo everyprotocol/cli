@@ -23,49 +23,20 @@ function configureSubCommand(
   program: Command,
   name: string,
   abiFile: string,
-  filter: (func: ContractFunctionDetail) => boolean,
-  level2Namer: (func: ContractFunctionDetail) => string
+  rename: (func: string) => string = (func) => func,
+  filter: (func: ContractFunctionDetail) => boolean = (func) => true
 ): Command {
   try {
-    // Read and parse the ABI file
     const abiPath = path.resolve(process.cwd(), "abis", abiFile);
     const abiContent = fs.readFileSync(abiPath, "utf8");
     const abi = JSON.parse(abiContent);
-
-    // Extract contract name from file path
     const contractName = path.basename(abiFile, path.extname(abiFile));
-
-    // Process the ABI to get function details
     const functionDetails = processAbi(abi, contractName);
-    
-    // Filter functions based on the provided filter function
     const filteredFunctions = functionDetails.filter(filter);
-    
-    // Create the level 1 command
-    const level1Command = program.command(name)
-      .description(`${name} commands for ${contractName}`);
-    
-    // Group functions by the custom level 2 naming function
-    const groupedFunctions = filteredFunctions.reduce((acc: Record<string, ContractFunctionDetail[]>, func) => {
-      const level2Name = level2Namer(func);
-      if (!acc[level2Name]) {
-        acc[level2Name] = [];
-      }
-      acc[level2Name].push(func);
-      return acc;
-    }, {});
-    
-    // Create level 2 commands
-    Object.entries(groupedFunctions).forEach(([level2Name, funcs]) => {
-      const level2Command = level1Command.command(level2Name)
-        .description(`${level2Name} commands`);
-      
-      // Generate leaf commands for each function
-      funcs.forEach(func => {
-        generateCommandFromDetail(level2Command, func);
-      });
+    const level1Command = program.command(name).description(`${name} commands for ${contractName}`);
+    filteredFunctions.forEach((func) => {
+      generateCommandFromDetail(level1Command, func);
     });
-    
     return program;
   } catch (error) {
     console.error(`Error configuring subcommand ${name} from ${abiFile}:`, error);
@@ -76,31 +47,37 @@ function configureSubCommand(
 // Example of using the configureSubCommand function
 configureSubCommand(
   program,
-  "element",
+  "unique",
   "IElementRegistry.json",
-  (func) => func.name.startsWith("unique") || func.name.startsWith("value"),
-  (func) => {
-    // Group by the first word (unique/value)
-    return func.name.startsWith("unique") ? "unique" : "value";
-  }
+  (func) => func.substring("unique".length),
+  (func) => func.name.startsWith("unique")
 );
+configureSubCommand(
+  program,
+  "value",
+  "IElementRegistry.json",
+  (func) => func.substring("value".length),
+  (func) => func.name.startsWith("value")
+);
+configureSubCommand(program, "set", "ISetRegistry.json", (func) => func.substring("set".length));
+configureSubCommand(program, "kind", "IKindRegistry.json", (func) => func.substring("kind".length));
 
-// Example of configuring commands from an ABI file
-// You would replace this with actual ABI paths
-const abiDir = path.resolve(process.cwd(), "abis");
-const abiFiles = [
-  "IRemoteMintable.json",
-  "IObjectMinter.json",
-  "IOmniRegistry.json",
-  "ISetRegistry.json",
-  "IKindRegistry.json",
-];
+// // Example of configuring commands from an ABI file
+// // You would replace this with actual ABI paths
+// const abiDir = path.resolve(process.cwd(), "abis");
+// const abiFiles = [
+//   "IRemoteMintable.json",
+//   "IObjectMinter.json",
+//   "IOmniRegistry.json",
+//   "ISetRegistry.json",
+//   "IKindRegistry.json",
+// ];
 
-// Configure commands from each ABI file
-abiFiles.forEach((abiFile) => {
-  const abiPath = path.join(abiDir, abiFile);
-  configureCommandsFromAbi(program, abiPath);
-});
+// // Configure commands from each ABI file
+// abiFiles.forEach((abiFile) => {
+//   const abiPath = path.join(abiDir, abiFile);
+//   configureCommandsFromAbi(program, abiPath);
+// });
 
 // Parse command line arguments
 program.parse();
