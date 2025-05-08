@@ -128,18 +128,18 @@ export function generateCommandFromDetail(command: Command, functionDetail: Cont
   });
 
   // Add common options based on function type
-  const isViewFunction = functionDetail.stateMutability === 'view' || functionDetail.stateMutability === 'pure';
-  
+  const isViewFunction = functionDetail.stateMutability === "view" || functionDetail.stateMutability === "pure";
+
   // Add universe option for all functions
-  leafCommand.option('-u, --universe <universe>', 'Universe URL or name');
-  
+  leafCommand.option("-u, --universe <universe>", "Universe URL or name");
+
   // Add additional options for write functions
   if (!isViewFunction) {
     leafCommand
-      .option('-a, --account <address>', 'Account address to use for the transaction')
-      .option('-k, --private-key <key>', 'Private key to sign the transaction')
-      .option('-p, --password <password>', 'Password to decrypt the private key')
-      .option('--pf, --password-file <file>', 'File containing the password to decrypt the private key');
+      .option("-a, --account <address>", "Account address to use for the transaction")
+      .option("--private-key <key>", "Private key to sign the transaction")
+      .option("-p, --password <password>", "Password to decrypt the private key")
+      .option("--password-file <file>", "File containing the password to decrypt the private key");
   }
 
   // Set the action handler
@@ -152,7 +152,7 @@ export function generateCommandFromDetail(command: Command, functionDetail: Cont
     // Validate options for write functions
     if (!isViewFunction) {
       if (!options.account && !options.privateKey) {
-        console.error('Error: Either --account (-a) or --private-key (-k) must be provided for write functions');
+        console.error("Error: Either --account (-a) or --private-key (-k) must be provided for write functions");
         process.exit(1);
       }
     }
