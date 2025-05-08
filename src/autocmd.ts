@@ -152,11 +152,16 @@ function extractNatSpec(abi: any) {
     return {
       title: devdoc.title || userdoc.notice || "",
 
-      // ai! the since there are two levels in the value of xdoc.methods, the second level is repalced not merged
-      methods: {
-        ...devdoc.methods,
-        ...userdoc.methods,
-      },
+      // Properly merge method documentation from both devdoc and userdoc
+      methods: Object.entries(devdoc.methods || {}).reduce((acc, [key, value]) => {
+        acc[key] = { ...value };
+        if (userdoc.methods && userdoc.methods[key]) {
+          // Merge the userdoc properties with devdoc properties
+          acc[key] = { ...acc[key], ...userdoc.methods[key] };
+        }
+        return acc;
+      }, { ...userdoc.methods || {} }),
+      
       events: {
         ...devdoc.events,
         ...userdoc.events,
@@ -223,7 +228,6 @@ export function generateCommandFromAbiFunction(
   generateCommandFromDetail(currentCommand, functionDetail);
 }
 
-// ai! add
 /**
  * Configures a commander program with commands from an ABI file
  * @param program - The commander program to configure
