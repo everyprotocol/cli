@@ -18,16 +18,17 @@ export interface ContractFunctionDetail {
     components?: any[];
   }>;
   stateMutability: string;
-  
+
+  // ai! remove the following 3 fields
   /** Additional fields for CLI processing */
   signature: string;
   contractName: string;
   commandPath: string[];
-  
+
   /** Merged metadata from userdoc and devdoc */
   _metadata?: {
+    signature: string; // ai! add this, andd use import { getFunctionSignature } from 'viem' to calculate the signature with the standard abi fields
     notice?: string;
-    details?: string;
     params?: Record<string, string>;
     returns?: Record<string, string>;
   };
