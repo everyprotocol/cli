@@ -100,6 +100,9 @@ export function processAbi(abi: any, contractName: string): ContractFunctionDeta
     });
 }
 
+// ai! add options for contract functions, if it's a view function, add --universe(-u), if it's a write funciton, add --universe(-u), --account(-a), --private-key(-k),  --password(-p) or --password-file(--pf) the password options can be ommited meaning user will input from the terminal, either -a or -k must be present
+//
+
 /**
  * Generates a command from a ContractFunctionDetail
  * @param command - The parent command to add to
@@ -108,18 +111,16 @@ export function processAbi(abi: any, contractName: string): ContractFunctionDeta
 export function generateCommandFromDetail(command: Command, functionDetail: ContractFunctionDetail): Command {
   // Get the last part of the command path
   const commandName = functionDetail.commandPath[functionDetail.commandPath.length - 1];
-  
+
   // Create a more descriptive command description that includes signature info
   let description = functionDetail.description;
   if (functionDetail.inputs.length > 0) {
-    const signature = `${functionDetail.name}(${functionDetail.inputs.map(i => i.type).join(', ')})`;
-    description = `${description} [${signature}]`;
+    const signature = `${functionDetail.name}(${functionDetail.inputs.map((i) => i.type).join(", ")})`;
+    description = `${description}`;
   }
-  
+
   // Create the command
-  const leafCommand = command
-    .command(commandName)
-    .description(description);
+  const leafCommand = command.command(commandName).description(description);
 
   // Add arguments for each input parameter
   functionDetail.inputs.forEach((input) => {
@@ -163,15 +164,18 @@ function extractNatSpec(abi: any) {
       title: devdoc.title || userdoc.notice || "",
 
       // Properly merge method documentation from both devdoc and userdoc
-      methods: Object.entries(devdoc.methods || {}).reduce((acc, [key, value]) => {
-        acc[key] = { ...value };
-        if (userdoc.methods && userdoc.methods[key]) {
-          // Merge the userdoc properties with devdoc properties
-          acc[key] = { ...acc[key], ...userdoc.methods[key] };
-        }
-        return acc;
-      }, { ...userdoc.methods || {} }),
-      
+      methods: Object.entries(devdoc.methods || {}).reduce(
+        (acc, [key, value]) => {
+          acc[key] = { ...value };
+          if (userdoc.methods && userdoc.methods[key]) {
+            // Merge the userdoc properties with devdoc properties
+            acc[key] = { ...acc[key], ...userdoc.methods[key] };
+          }
+          return acc;
+        },
+        { ...(userdoc.methods || {}) }
+      ),
+
       events: {
         ...devdoc.events,
         ...userdoc.events,
