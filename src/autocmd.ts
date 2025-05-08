@@ -54,10 +54,10 @@ export function generateFunctionCommand(cmd: Command, name: string, func: Contra
   });
   const isReadFunction = func.stateMutability === "view" || func.stateMutability === "pure";
   if (isReadFunction) {
-    subCmd.option("-u, --universe <universe>", "Universe name").action(readAction(func));
+    subCmd.option("-u, --universe <universe>", "Universe name", "local").action(readAction(func));
   } else {
     subCmd
-      .option("-u, --universe <universe>", "Universe name")
+      .option("-u, --universe <universe>", "Universe name", "local")
       .option("-a, --account <address>", "Account address to use for the transaction")
       .option("--pk, --private-key <key>", "Private key to sign the transaction")
       .option("-p, --password [password]", "Password to decrypt the private key")

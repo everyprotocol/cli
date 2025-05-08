@@ -13,8 +13,10 @@ let universeConfigsCache: Map<string, UniverseConfig> | null = null;
 
 export function getUniverseConfig(opts: OptionValues): UniverseConfig {
   const configs = loadUniverseConfigs();
-  const config = configs.get(opts.universe);
-  if (!config) throw Error();
+  // Use the universe from options or fall back to default universe from config
+  const universeName = opts.universe || "local";
+  const config = configs.get(universeName);
+  if (!config) throw Error(`Universe "${universeName}" not found in configuration. Available universes: ${[...configs.keys()].join(', ')}`);
   return config;
 }
 
