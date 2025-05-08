@@ -31,23 +31,6 @@ export function processAbi(abi: any, contractName: string): ContractFunctionDeta
       // Get function documentation
       const methodDocs = natspec.methods[signature] || {};
 
-      // Process inputs with documentation
-      const inputs = func.inputs.map((input: any) => ({
-        name: input.name,
-        type: input.type,
-        description: methodDocs.params?.[input.name] || `${input.type} parameter`,
-      }));
-
-      // Process outputs with documentation
-      const outputs = func.outputs.map((output: any, index: number) => {
-        const outputName = output.name || `output${index}`;
-        return {
-          name: outputName,
-          type: output.type,
-          description: methodDocs.returns?.[outputName] || `${output.type} return value`,
-        };
-      });
-
       // Split function name into parts for nested commands
       const commandPath = func.name
         .replace(/([A-Z])/g, " $1")
@@ -55,17 +38,21 @@ export function processAbi(abi: any, contractName: string): ContractFunctionDeta
         .toLowerCase()
         .split(" ");
 
-      return {
-        abiFunction: func,
-        name: func.name,
+      // Create the function detail object based on the ABI structure
+      const functionDetail: ContractFunctionDetail = {
+        ...func, // Copy all original ABI fields
         signature,
-        inputs,
-        outputs,
-        stateMutability: func.stateMutability,
-        description: methodDocs.notice || `Call ${func.name} function`,
         contractName,
         commandPath,
+        _metadata: {
+          notice: methodDocs.notice || `Call ${func.name} function`,
+          details: methodDocs.details,
+          params: methodDocs.params || {},
+          returns: methodDocs.returns || {},
+        }
       };
+
+      return functionDetail;
     });
 }
 
@@ -79,7 +66,7 @@ export function generateCommandFromDetail(command: Command, functionDetail: Cont
   const commandName = functionDetail.commandPath[functionDetail.commandPath.length - 1];
 
   // Create a more descriptive command description that includes signature info
-  let description = functionDetail.description;
+  let description = functionDetail._metadata?.notice || `Call ${functionDetail.name} function`;
   if (functionDetail.inputs.length > 0) {
     const signature = `${functionDetail.name}(${functionDetail.inputs.map((i) => i.type).join(", ")})`;
     description = `${description} [${signature}]`;
@@ -90,7 +77,8 @@ export function generateCommandFromDetail(command: Command, functionDetail: Cont
 
   // Add arguments for each input parameter
   functionDetail.inputs.forEach((input) => {
-    leafCommand.argument(`<${input.name}>`, input.description);
+    const paramDescription = functionDetail._metadata?.params?.[input.name] || `${input.type} parameter`;
+    leafCommand.argument(`<${input.name}>`, paramDescription);
   });
 
   // Add common options based on function type
@@ -199,22 +187,36 @@ function extractNatSpec(abi: any) {
     const devdoc = metadata.output?.devdoc || {};
     const userdoc = metadata.output?.userdoc || {};
 
+    // Merge method documentation from both devdoc and userdoc
+    const methods: Record<string, any> = {};
+    
+    // First add all methods from devdoc
+    if (devdoc.methods) {
+      Object.entries(devdoc.methods).forEach(([key, value]) => {
+        methods[key] = {
+          ...value,
+          details: (value as any)?.details || undefined
+        };
+      });
+    }
+    
+    // Then merge in userdoc methods
+    if (userdoc.methods) {
+      Object.entries(userdoc.methods).forEach(([key, value]) => {
+        if (!methods[key]) {
+          methods[key] = {};
+        }
+        // Add notice from userdoc
+        methods[key] = {
+          ...methods[key],
+          notice: (value as any)?.notice || undefined
+        };
+      });
+    }
+
     return {
       title: devdoc.title || userdoc.notice || "",
-
-      // Properly merge method documentation from both devdoc and userdoc
-      methods: Object.entries(devdoc.methods || {}).reduce(
-        (acc, [key, value]) => {
-          acc[key] = { ...value };
-          if (userdoc.methods && userdoc.methods[key]) {
-            // Merge the userdoc properties with devdoc properties
-            acc[key] = { ...acc[key], ...userdoc.methods[key] };
-          }
-          return acc;
-        },
-        { ...(userdoc.methods || {}) }
-      ),
-
+      methods,
       events: {
         ...devdoc.events,
         ...userdoc.events,
