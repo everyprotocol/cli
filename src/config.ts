@@ -10,19 +10,28 @@ import { OptionValues } from "commander";
 let universeConfigsCache: Map<string, UniverseConfig> | null = null;
 
 export function getUniverseConfig(opts: OptionValues): UniverseConfig {
-  const configs = loadUniverseConfigs();
+  const config = loadUniverseConfigs();
   const universeName = opts.universe || "local";
-  const config = configs.get(universeName);
-  if (!config)
+  const universe = config.universes[universeName];
+  
+  if (!universe) {
+    const availableUniverses = Object.keys(config.universes).join(", ");
     throw Error(
-      `Universe "${universeName}" not found in configuration. Available universes: ${[...configs.keys()].join(", ")}`
+      `Universe "${universeName}" not found in configuration. Available universes: ${availableUniverses}`
     );
-  return config;
+  }
+  
+  return universe;
 }
 
-// ai! remove this export to make it iternal, and modify the return type to EveryCoofig
-export function loadUniverseConfigs(): Map<string, UniverseConfig> {
-  if (universeConfigsCache) return universeConfigsCache;
+function loadUniverseConfigs(): EveryConfig {
+  if (universeConfigsCache) {
+    const defaultUniverse = "local";
+    return {
+      general: { default_universe: defaultUniverse },
+      universes: Object.fromEntries(universeConfigsCache.entries())
+    };
+  }
 
   dotenv.config();
   const configs = new Map<string, UniverseConfig>();
@@ -81,5 +90,11 @@ export function loadUniverseConfigs(): Map<string, UniverseConfig> {
   }
 
   universeConfigsCache = configs;
-  return configs;
+  
+  // Convert Map to EveryConfig format
+  const defaultUniverse = "local";
+  return {
+    general: { default_universe: defaultUniverse },
+    universes: Object.fromEntries(configs.entries())
+  };
 }
