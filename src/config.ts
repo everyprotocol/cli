@@ -7,10 +7,10 @@ import type { EveryConfig, UniverseConfig } from "./types";
 import { OptionValues } from "commander";
 
 // Cache to avoid repeated loading
-let universeConfigsCache: EveryConfig | null = null;
+let CONFIG_CACHED: EveryConfig | null = null;
 
 export function getUniverseConfig(opts: OptionValues): UniverseConfig {
-  const config = loadUniverseConfigs();
+  const config = loadProtocolConfig();
   const universeName = opts.universe || "local";
   const universe = config.universes[universeName];
 
@@ -22,19 +22,18 @@ export function getUniverseConfig(opts: OptionValues): UniverseConfig {
   return universe;
 }
 
-function loadUniverseConfigs(): EveryConfig {
-  if (universeConfigsCache) {
-    return universeConfigsCache;
+function loadProtocolConfig(): EveryConfig {
+  if (CONFIG_CACHED) {
+    return CONFIG_CACHED;
   }
 
-  dotenv.config();
   const configs = new Map<string, UniverseConfig>();
   let configData: EveryConfig | null = null;
 
-  // Load configs from files in order of precedence
   const configLocations = [
     path.resolve(process.cwd(), ".every.toml"),
     path.resolve(os.homedir(), ".every.toml"),
+    // ai! this should be a dir of the package root, not the cwd
     path.resolve(process.cwd(), "node_modules/every-cli/.every.toml"),
   ];
 
@@ -85,10 +84,10 @@ function loadUniverseConfigs(): EveryConfig {
 
   // Convert Map to EveryConfig format
   const defaultUniverse = "local";
-  universeConfigsCache = {
+  CONFIG_CACHED = {
     general: { default_universe: defaultUniverse },
     universes: Object.fromEntries(configs.entries()),
   };
-  
-  return universeConfigsCache;
+
+  return CONFIG_CACHED;
 }
