@@ -2,11 +2,132 @@ import { Command } from "commander";
 import fs from "fs";
 import path from "path";
 
-// ai! define a type (say ContractFunctionDetail, you might change the name if appropriate )for an abi function, including all the information collected from json paths such as .abi, .metadata.output.devdoc, .metadata.output.userdoc. there might be some functions with the same name but different signatures, keep them all(choose unique key)
+/**
+ * Represents a function from a contract ABI with its documentation
+ */
+export interface ContractFunctionDetail {
+  /** Original ABI function object */
+  abiFunction: any;
+  /** Function name */
+  name: string;
+  /** Function signature (name + param types) */
+  signature: string;
+  /** Function inputs */
+  inputs: Array<{
+    name: string;
+    type: string;
+    description: string;
+  }>;
+  /** Function outputs */
+  outputs: Array<{
+    name: string;
+    type: string;
+    description: string;
+  }>;
+  /** Function state mutability (view, pure, nonpayable, payable) */
+  stateMutability: string;
+  /** User-friendly description of the function */
+  description: string;
+  /** Contract name this function belongs to */
+  contractName: string;
+  /** Command path segments for nested commands */
+  commandPath: string[];
+}
 
-// ai! add a function to process an abi and returns an array of ContractFunctionDetails
+/**
+ * Processes an ABI and extracts detailed function information
+ * @param abi - The ABI object
+ * @param contractName - Name of the contract
+ * @returns Array of contract function details
+ */
+export function processAbi(abi: any, contractName: string): ContractFunctionDetail[] {
+  // Extract NatSpec documentation
+  const natspec = extractNatSpec(abi);
+  
+  // Get the ABI array (handle both direct array and nested in "abi" property)
+  const abiArray = Array.isArray(abi) ? abi : abi.abi;
+  
+  if (!abiArray) {
+    console.error(`No valid ABI found for ${contractName}`);
+    return [];
+  }
+  
+  // Process only functions
+  return abiArray
+    .filter((item: any) => item.type === "function")
+    .map((func: any) => {
+      // Create function signature for looking up docs
+      const signature = `${func.name}(${func.inputs.map((i: any) => i.type).join(",")})`;
+      
+      // Get function documentation
+      const methodDocs = natspec.methods[signature] || {};
+      
+      // Process inputs with documentation
+      const inputs = func.inputs.map((input: any) => ({
+        name: input.name,
+        type: input.type,
+        description: methodDocs.params?.[input.name] || `${input.type} parameter`
+      }));
+      
+      // Process outputs with documentation
+      const outputs = func.outputs.map((output: any, index: number) => {
+        const outputName = output.name || `output${index}`;
+        return {
+          name: outputName,
+          type: output.type,
+          description: methodDocs.returns?.[outputName] || `${output.type} return value`
+        };
+      });
+      
+      // Split function name into parts for nested commands
+      const commandPath = func.name
+        .replace(/([A-Z])/g, " $1")
+        .trim()
+        .toLowerCase()
+        .split(" ");
+      
+      return {
+        abiFunction: func,
+        name: func.name,
+        signature,
+        inputs,
+        outputs,
+        stateMutability: func.stateMutability,
+        description: methodDocs.notice || `Call ${func.name} function`,
+        contractName,
+        commandPath
+      };
+    });
+}
 
-// ai! add a function to generate a command(the leaf command, no subcommands anymore) from a ContractFunctionDetails
+/**
+ * Generates a command from a ContractFunctionDetail
+ * @param command - The parent command to add to
+ * @param functionDetail - The function detail object
+ */
+export function generateCommandFromDetail(command: Command, functionDetail: ContractFunctionDetail): Command {
+  // Create the command with the last part of the path
+  const leafCommand = command.command(functionDetail.commandPath[functionDetail.commandPath.length - 1])
+    .description(functionDetail.description);
+  
+  // Add arguments for each input parameter
+  functionDetail.inputs.forEach(input => {
+    leafCommand.argument(`<${input.name}>`, input.description);
+  });
+  
+  // Set the action handler
+  leafCommand.action((...args) => {
+    // Last argument is the Command object
+    const options = args.pop();
+    // Extract the actual arguments
+    const functionArgs = args;
+    
+    console.log(`Executing ${functionDetail.name} with args:`, functionArgs);
+    // Here you would add the actual contract call logic
+  });
+  
+  return leafCommand;
+}
 
 /**
  * Extracts NatSpec documentation from ABI
@@ -48,7 +169,7 @@ function extractNatSpec(abi: any) {
  * Generates a commander command from a Solidity function definition
  * @param program - The commander program to add the command to
  * @param abiFunction - The function definition from the ABI
- * @param contractName - Optional name of the contract for command grouping
+ * @param contractName - Name of the contract for command grouping
  * @param natspec - NatSpec documentation
  */
 export function generateCommandFromAbiFunction(
@@ -62,14 +183,17 @@ export function generateCommandFromAbiFunction(
     return;
   }
 
-  const functionName = abiFunction.name;
-
-  // Get function documentation
-  const functionKey = `${functionName}(${abiFunction.inputs.map((i: any) => i.type).join(",")})`;
+  // Create function detail
+  const functionDetail = processAbi({ abi: [abiFunction], metadata: { output: { devdoc: {}, userdoc: {} } } }, contractName)[0];
+  
+  // Override with natspec if available
+  const functionKey = functionDetail.signature;
   const methodDocs = natspec.methods[functionKey] || {};
-
-  // Get user-friendly description
-  const functionDescription = methodDocs.notice || `Call ${functionName} function`;
+  functionDetail.description = methodDocs.notice || functionDetail.description;
+  
+  functionDetail.inputs.forEach(input => {
+    input.description = methodDocs.params?.[input.name] || input.description;
+  });
 
   // Create nested command structure
   // Find or create contract subcommand
@@ -78,17 +202,10 @@ export function generateCommandFromAbiFunction(
     contractCommand = program.command(contractName).description(`Commands for ${contractName} contract`);
   }
 
-  // Split function name into parts for nested commands (e.g., "uniqueDescriptor" -> "unique descriptor")
-  const parts = functionName
-    .replace(/([A-Z])/g, " $1")
-    .trim()
-    .toLowerCase()
-    .split(" ");
-
   // Create or find nested command structure
   let currentCommand = contractCommand;
-  for (let i = 0; i < parts.length - 1; i++) {
-    const part = parts[i];
+  for (let i = 0; i < functionDetail.commandPath.length - 1; i++) {
+    const part = functionDetail.commandPath[i];
     let subCommand = currentCommand.commands.find((cmd) => cmd.name() === part);
     if (!subCommand) {
       subCommand = currentCommand.command(part).description(`${part} commands`);
@@ -96,26 +213,8 @@ export function generateCommandFromAbiFunction(
     currentCommand = subCommand;
   }
 
-  // Create the final command with the last part of the function name
-  const lastPart = parts[parts.length - 1];
-  const command = currentCommand.command(lastPart).description(functionDescription);
-
-  // Add arguments for each input parameter
-  abiFunction.inputs.forEach((input: any, index: number) => {
-    const paramDocs = methodDocs.params?.[input.name] || `${input.type} parameter`;
-    command.argument(`<${input.name}>`, paramDocs);
-  });
-
-  // Set the action handler
-  command.action((...args) => {
-    // Last argument is the Command object
-    const options = args.pop();
-    // Extract the actual arguments
-    const functionArgs = args;
-
-    console.log(`Executing ${functionName} with args:`, functionArgs);
-    // Here you would add the actual contract call logic
-  });
+  // Generate the leaf command
+  generateCommandFromDetail(currentCommand, functionDetail);
 }
 
 /**
@@ -133,22 +232,52 @@ export function configureCommandsFromAbi(program: Command, abiPath: string): Com
     // Extract contract name from file path
     const contractName = path.basename(abiPath, path.extname(abiPath));
 
-    // Get the ABI array (handle both direct array and nested in "abi" property)
-    const abiArray = Array.isArray(abi) ? abi : abi.abi;
-
-    if (!abiArray) {
-      console.error(`No valid ABI found in ${abiPath}`);
-      return program;
-    }
-
     // Extract NatSpec documentation
     const natspec = extractNatSpec(abi);
 
-    // Generate commands for each function in the ABI
-    abiArray.forEach((item: any) => {
-      if (item.type === "function") {
-        generateCommandFromAbiFunction(program, item, contractName, natspec);
+    // Process the ABI to get function details
+    const functionDetails = processAbi(abi, contractName);
+
+    // Group functions by their first command path segment to avoid duplicates
+    const groupedFunctions = functionDetails.reduce((acc: Record<string, ContractFunctionDetail[]>, func) => {
+      const firstSegment = func.commandPath[0];
+      if (!acc[firstSegment]) {
+        acc[firstSegment] = [];
       }
+      acc[firstSegment].push(func);
+      return acc;
+    }, {});
+
+    // Create contract command
+    let contractCommand = program.commands.find((cmd) => cmd.name() === contractName);
+    if (!contractCommand) {
+      contractCommand = program.command(contractName).description(`Commands for ${contractName} contract`);
+    }
+
+    // Process each function group
+    Object.entries(groupedFunctions).forEach(([firstSegment, funcs]) => {
+      // Create first level subcommand
+      let subCommand = contractCommand.commands.find((cmd) => cmd.name() === firstSegment);
+      if (!subCommand) {
+        subCommand = contractCommand.command(firstSegment).description(`${firstSegment} commands`);
+      }
+
+      // Process each function in the group
+      funcs.forEach(func => {
+        // Create nested command structure
+        let currentCommand = subCommand;
+        for (let i = 1; i < func.commandPath.length - 1; i++) {
+          const part = func.commandPath[i];
+          let nextCommand = currentCommand.commands.find((cmd) => cmd.name() === part);
+          if (!nextCommand) {
+            nextCommand = currentCommand.command(part).description(`${part} commands`);
+          }
+          currentCommand = nextCommand;
+        }
+
+        // Generate the leaf command
+        generateCommandFromDetail(currentCommand, func);
+      });
     });
 
     return program;
