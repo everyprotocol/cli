@@ -4,9 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "bun build ./src/index.ts --outdir dist",
-    "clean": "rm -rf dist",
-    "start": "bun src/index.ts",
-    "dev": "bun --watch src/index.ts"
+    "clean": "rm -rf dist"
   },
   "devDependencies": {
     "@types/bun": "latest"
