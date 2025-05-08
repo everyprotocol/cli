@@ -411,8 +411,13 @@ async function callFunction(functionDetail: ContractFunctionDetail, args: any[],
   });
 
   try {
-    // Call the function using the proper method
-    const result = await contract.read[functionDetail.name as keyof typeof contract.read](args as any[]);
+    // Call the function directly using publicClient.readContract
+    const result = await publicClient.readContract({
+      address: contractAddress as Address,
+      abi: parseAbi([`function ${functionDetail.signature}`]),
+      functionName: functionDetail.name,
+      args: args as any[],
+    });
     return result;
   } catch (error) {
     console.error(`Error calling ${functionDetail.name}:`, error);
