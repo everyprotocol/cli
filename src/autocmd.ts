@@ -422,16 +422,48 @@ async function callFunction(functionDetail: ContractFunctionDetail, args: any[],
 
   try {
     // Call the function directly using publicClient.readContract
-    // Create a complete function signature including return types
-    const returnTypes = functionDetail.outputs.map((output) => output.type).join(",");
-    const fullSignature = `function ${functionDetail.signature} returns (${returnTypes})`;
-    console.log({ args, options, contractKey, contractAddress, fullSignature });
-    const result = await publicClient.readContract({
-      address: contractAddress as Address,
-      abi: parseAbi([fullSignature]),
-      functionName: functionDetail.name,
-      args: args as any[],
-    });
+    // Handle tuple types specially to avoid abitype errors
+    let result;
+    
+    // Check if any output type is a tuple
+    const hasTupleOutput = functionDetail.outputs.some(output => 
+      output.type === 'tuple' || output.type.includes('tuple['));
+    
+    if (hasTupleOutput) {
+      // For functions with tuple returns, use the original ABI function
+      const abiPath = path.resolve(process.cwd(), "abis", `${functionDetail.contractName}.json`);
+      const abiContent = fs.readFileSync(abiPath, "utf8");
+      const fullAbi = JSON.parse(abiContent).abi;
+      
+      // Find the matching function in the ABI
+      const abiFunctions = fullAbi.filter((item: any) => 
+        item.type === 'function' && 
+        item.name === functionDetail.name
+      );
+      
+      console.log({ args, options, contractKey, contractAddress, functionName: functionDetail.name });
+      
+      // Use the full ABI for the call
+      result = await publicClient.readContract({
+        address: contractAddress as Address,
+        abi: abiFunctions,
+        functionName: functionDetail.name,
+        args: args as any[],
+      });
+    } else {
+      // For simple return types, use the constructed signature
+      const returnTypes = functionDetail.outputs.map((output) => output.type).join(",");
+      const fullSignature = `function ${functionDetail.signature} returns (${returnTypes})`;
+      console.log({ args, options, contractKey, contractAddress, fullSignature });
+      
+      result = await publicClient.readContract({
+        address: contractAddress as Address,
+        abi: parseAbi([fullSignature]),
+        functionName: functionDetail.name,
+        args: args as any[],
+      });
+    }
+    
     console.log(result);
     return result;
   } catch (error) {
