@@ -37,8 +37,10 @@ export function extractFunctions(abi: any): ContractFunction[] {
     .filter((item: any) => item.type === "function")
     .map((func: any) => {
       const signature = toFunctionSignature(func);
-      const userdoc = abi.metdata.output.userdoc.methods[signature] || {};
-      const devdoc = abi.metdata.output.devdoc.methods[signature] || {};
+      // Handle case where metadata might not exist or have expected structure
+      const metadata = abi.metadata?.output || { userdoc: { methods: {} }, devdoc: { methods: {} } };
+      const userdoc = metadata.userdoc?.methods?.[signature] || {};
+      const devdoc = metadata.devdoc?.methods?.[signature] || {};
       return { ...func, _metadata: { signature, ...userdoc, ...devdoc } } as ContractFunction;
     });
 }
@@ -66,7 +68,28 @@ export function generateFunctionCommand(cmd: Command, name: string, func: Contra
   return subCmd;
 }
 
-function preprocessArgs(raw: any[], func: ContractFunction): any[] {}
+function preprocessArgs(raw: any[], func: ContractFunction): any[] {
+  return raw.map((arg, index) => {
+    const paramType = func.inputs[index]?.type;
+    
+    // Handle array types
+    if (paramType && (paramType.endsWith("[]") || paramType.includes("["))) {
+      try {
+        return JSON.parse(arg);
+      } catch (e) {
+        console.error(`Error parsing array argument: ${arg}`);
+        throw new Error(`Could not parse argument ${index + 1} as array. Please provide a valid JSON array.`);
+      }
+    }
+    
+    // Handle bytes32 type
+    if (paramType === "bytes32" && arg.startsWith("0x") && arg.length < 66) {
+      return arg.padEnd(66, "0");
+    }
+    
+    return arg;
+  });
+}
 
 function writeAction(func: ContractFunction): (this: Command) => Promise<void> {
   return async function read(this: Command) {
