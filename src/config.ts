@@ -7,8 +7,7 @@ import type { EveryConfig, UniverseConfig } from "./types";
 import { OptionValues } from "commander";
 
 // Cache to avoid repeated loading
-// ai!, this should be a EveryConfig also
-let universeConfigsCache: Map<string, UniverseConfig> | null = null;
+let universeConfigsCache: EveryConfig | null = null;
 
 export function getUniverseConfig(opts: OptionValues): UniverseConfig {
   const config = loadUniverseConfigs();
@@ -25,11 +24,7 @@ export function getUniverseConfig(opts: OptionValues): UniverseConfig {
 
 function loadUniverseConfigs(): EveryConfig {
   if (universeConfigsCache) {
-    const defaultUniverse = "local";
-    return {
-      general: { default_universe: defaultUniverse },
-      universes: Object.fromEntries(universeConfigsCache.entries()),
-    };
+    return universeConfigsCache;
   }
 
   dotenv.config();
@@ -88,12 +83,12 @@ function loadUniverseConfigs(): EveryConfig {
     console.warn("No universe configurations found. Please create a .every.toml file.");
   }
 
-  universeConfigsCache = configs;
-
   // Convert Map to EveryConfig format
   const defaultUniverse = "local";
-  return {
+  universeConfigsCache = {
     general: { default_universe: defaultUniverse },
     universes: Object.fromEntries(configs.entries()),
   };
+  
+  return universeConfigsCache;
 }
