@@ -2,11 +2,15 @@
   "name": "every-cli",
   "module": "src/index.ts",
   "type": "module",
+  "bin": {
+    "every": "./dist/index.js"
+  },
   "scripts": {
-    "build": "bun build ./src/index.ts --outdir dist",
+    "build": "bun build ./src/index.ts --outdir dist --target node",
     "clean": "rm -rf dist",
     "start": "bun src/index.ts",
-    "dev": "bun --watch src/index.ts"
+    "dev": "bun --watch src/index.ts",
+    "prepublishOnly": "npm run build"
   },
   "devDependencies": {
     "@types/bun": "latest"
