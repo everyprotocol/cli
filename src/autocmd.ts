@@ -1,295 +1,212 @@
 import { Command, type OptionValues } from "commander";
 import fs from "fs";
 import path from "path";
-import { getFunctionSignature } from "viem";
-import type { ContractFunctionDetail } from "./types";
+import { toFunctionSignature } from "viem";
+import type { ContractFunction, UniverseConfig, CommandConfig } from "./types";
+import { getWalletClient, getPublicClient, getContractAddress } from "./client";
+import { getUniverseConfig } from "./config";
 
-/**
- * Processes an ABI and extracts detailed function information
- * @param abi - The ABI object
- * @param contractName - Name of the contract
- * @returns Array of contract function details
- */
-export function processAbi(abi: any, contractName: string): ContractFunctionDetail[] {
-  // Extract NatSpec documentation
-  const natspec = extractNatSpec(abi);
+export function configureSubCommand(program: Command, config: CommandConfig): Command {
+  try {
+    const { name, abiFile, rename, filter } = config;
 
-  // Get the ABI array (handle both direct array and nested in "abi" property)
-  const abiArray = Array.isArray(abi) ? abi : abi.abi;
+    const abiPath = path.resolve(process.cwd(), "abis", abiFile);
+    const abiContent = fs.readFileSync(abiPath, "utf8");
+    const abi = JSON.parse(abiContent);
+    const contractName = path.basename(abiFile, path.extname(abiFile));
+    const functionDetails = extractFunctions(abi);
+    const filtered = filter ? functionDetails.filter(filter) : functionDetails;
 
-  if (!abiArray) {
-    console.error(`No valid ABI found for ${contractName}`);
-    return [];
+    const level1Cmd = program.command(name).description(`${name} commands for ${contractName}`);
+    const level2Cmds = new Map<string, number>();
+    filtered.forEach((func: ContractFunction) => {
+      let num: number = level2Cmds.get(func.name) || 0;
+      const level2CmdName = num > 0 ? `${func.name}${num + 1}` : func.name;
+      level2Cmds.set(func.name, num + 1);
+      generateFunctionCommand(level1Cmd, level2CmdName, func);
+    });
+    return program;
+  } catch (error) {
+    console.error(`Error configuring subcommand ${config.name} from ${config.abiFile}:`, error);
+    return program;
   }
+}
 
-  // Process only functions
-  return abiArray
+export function extractFunctions(abi: any): ContractFunction[] {
+  return abi.abi
     .filter((item: any) => item.type === "function")
     .map((func: any) => {
-      // Create function signature for looking up docs using viem
-      const signature = getFunctionSignature({
-        name: func.name,
-        inputs: func.inputs,
-      });
-
-      // Get function documentation
-      const methodDocs = natspec.methods[signature] || {};
-
-      // Split function name into parts for nested commands
-      const commandPath = func.name
-        .replace(/([A-Z])/g, " $1")
-        .trim()
-        .toLowerCase()
-        .split(" ");
-
-      // Create the function detail object based on the ABI structure
-      const functionDetail: ContractFunctionDetail = {
-        ...func, // Copy all original ABI fields
-        contractName,
-        commandPath,
-        _metadata: {
-          signature,
-          notice: methodDocs.notice || `Call ${func.name} function`,
-          details: methodDocs.details,
-          params: methodDocs.params || {},
-          returns: methodDocs.returns || {},
-        }
-      };
-
-      return functionDetail;
+      const signature = toFunctionSignature(func);
+      const userdoc = abi.metdata.output.userdoc.methods[signature] || {};
+      const devdoc = abi.metdata.output.devdoc.methods[signature] || {};
+      return { ...func, _metadata: { signature, ...userdoc, ...devdoc } } as ContractFunction;
     });
 }
 
-/**
- * Generates a command from a ContractFunctionDetail
- * @param command - The parent command to add to
- * @param functionDetail - The function detail object
- */
-export function generateCommandFromDetail(command: Command, functionDetail: ContractFunctionDetail): Command {
-  // Get the last part of the command path
-  const commandName = functionDetail.commandPath[functionDetail.commandPath.length - 1];
-
-  // Create a more descriptive command description that includes signature info
-  let description = functionDetail._metadata?.notice || `Call ${functionDetail.name} function`;
-  if (functionDetail.inputs.length > 0) {
-    const signature = functionDetail._metadata?.signature || 
-      getFunctionSignature({
-        name: functionDetail.name,
-        inputs: functionDetail.inputs,
-      });
-    description = `${description} [${signature}]`;
-  }
-
-  // Create the command
-  const leafCommand = command.command(commandName).description(description);
-
-  // Add arguments for each input parameter
-  functionDetail.inputs.forEach((input) => {
-    const paramDescription = functionDetail._metadata?.params?.[input.name] || `${input.type} parameter`;
-    leafCommand.argument(`<${input.name}>`, paramDescription);
+export function generateFunctionCommand(cmd: Command, name: string, func: ContractFunction): Command {
+  let desc = func._metadata?.notice || `Call ${func.name} function`;
+  const subCmd = cmd.command(name).description(desc);
+  func.inputs.forEach((input) => {
+    const paramDesc = func._metadata?.params?.[input.name] || `${input.type} parameter`;
+    subCmd.argument(`<${input.name}>`, paramDesc);
   });
-
-  // Add common options based on function type
-  const isViewFunction = functionDetail.stateMutability === "view" || functionDetail.stateMutability === "pure";
-
-  // Add universe option for all functions
-  const universes = loadUniverseConfigs();
-  const defaultUniverse = universes.size > 0 ? Array.from(universes.keys())[0] : undefined;
-  leafCommand.option("-u, --universe <universe>", "Universe URL or name", defaultUniverse);
-
-  // Add additional options for write functions
-  if (!isViewFunction) {
-    leafCommand
+  const isReadFunction = func.stateMutability === "view" || func.stateMutability === "pure";
+  if (isReadFunction) {
+    subCmd.option("-u, --universe <universe>", "Universe name").action(readAction(func));
+  } else {
+    subCmd
+      .option("-u, --universe <universe>", "Universe name")
       .option("-a, --account <address>", "Account address to use for the transaction")
-      .option("--private-key <key>", "Private key to sign the transaction")
+      .option("--pk, --private-key <key>", "Private key to sign the transaction")
       .option("-p, --password [password]", "Password to decrypt the private key")
-      .option("--password-file <file>", "File containing the password to decrypt the private key");
+      .option("--pf, --password-file <file>", "File containing the password to decrypt the private key")
+      .action(writeAction(func));
   }
 
-  // Set the action handler
-  leafCommand.action(async function () {
-    const options = this.opts();
-    const rawArgs = this.args;
+  return subCmd;
+}
 
-    // Process arguments to handle arrays and other complex types
-    const functionArgs = rawArgs.map((arg: string, index: number) => {
-      const paramType = functionDetail.inputs[index]?.type;
+function preprocessArgs(raw: any[], func: ContractFunction): any[] {}
 
-      // Handle array types
-      if (paramType && (paramType.endsWith("[]") || paramType.includes("["))) {
-        try {
-          // Parse JSON string to array
-          return JSON.parse(arg);
-        } catch (e) {
-          console.error(`Error parsing array argument: ${arg}`);
-          throw new Error(`Could not parse argument ${index + 1} as array. Please provide a valid JSON array.`);
-        }
-      }
+function writeAction(func: ContractFunction): (this: Command) => Promise<void> {
+  return async function read(this: Command) {
+    const opts = this.opts();
+    const config: UniverseConfig = getUniverseConfig(opts);
+    const args = preprocessArgs(this.args, func);
+    const publicClient = getPublicClient(config);
+    const walletClient = getWalletClient(config, opts, args);
+    const contractAddress = getContractAddress(config, "contract", args);
 
-      // Handle bytes32 type (ensure proper length)
-      if (paramType === "bytes32" && arg.startsWith("0x") && arg.length < 66) {
-        // Pad to full bytes32 length
-        return arg.padEnd(66, "0");
-      }
-
-      return arg;
+    const { request } = await publicClient.simulateContract({
+      address: contractAddress,
+      abi: [func],
+      functionName: func.name,
+      args: args as any[],
+      account: walletClient.account,
     });
+    const hash = await walletClient.writeContract(request);
+    console.log(`Transaction sent: ${hash}`);
+    console.log("Waiting for transaction to be mined...");
+    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+    console.log("Transaction mined:", receipt);
+  };
+}
 
-    // Validate options for write functions
-    if (!isViewFunction) {
-      if (!options.account && !options.privateKey) {
-        console.error("Error: Either --account (-a) or --private-key must be provided for write functions");
-        process.exit(1);
-      }
-    }
-
-    console.log(`Executing ${functionDetail.name} with args:`, functionArgs);
+function readAction(func: ContractFunction): (this: Command) => Promise<void> {
+  return async function read(this: Command) {
+    const opts = this.opts();
+    const config: UniverseConfig = getUniverseConfig(opts);
+    const publicClient = getPublicClient(config);
+    const args = preprocessArgs(this.args, func);
+    const contractAddress = getContractAddress(config, "contract", args);
 
     try {
-      if (isViewFunction) {
-        console.log(`Calling view function on ${functionDetail.contractName}...`);
-      } else {
-        console.log(`Sending transaction to ${functionDetail.contractName}...`);
-      }
-      
-      const result = await executeContractFunction(functionDetail, functionArgs, options);
-      
-      if (isViewFunction) {
-        console.log(`Result:`, result);
-      } else {
-        console.log(`Transaction hash:`, result);
-      }
+      console.log(`Calling view function on ${func.name}...`);
+      const result = await publicClient.readContract({
+        address: contractAddress,
+        abi: [func],
+        functionName: func.name,
+        args: args as any[],
+      });
+      console.log(`Result:`, result);
     } catch (error) {
       console.error(`Error executing function:`, error);
       process.exit(1);
     }
-  });
+  };
 
-  return leafCommand;
+  // // Process arguments to handle arrays and other complex types
+  // const functionArgs = rawArgs.map((arg: string, index: number) => {
+  //   const paramType = func.inputs[index]?.type;
+
+  //   // Handle array types
+  //   if (paramType && (paramType.endsWith("[]") || paramType.includes("["))) {
+  //     try {
+  //       // Parse JSON string to array
+  //       return JSON.parse(arg);
+  //     } catch (e) {
+  //       console.error(`Error parsing array argument: ${arg}`);
+  //       throw new Error(`Could not parse argument ${index + 1} as array. Please provide a valid JSON array.`);
+  //     }
+  //   }
+
+  //   // Handle bytes32 type (ensure proper length)
+  //   if (paramType === "bytes32" && arg.startsWith("0x") && arg.length < 66) {
+  //     // Pad to full bytes32 length
+  //     return arg.padEnd(66, "0");
+  //   }
+
+  //   return arg;
+  // });
+  // if (!options.account && !options.privateKey) {
+  //   console.error("Error: Either --account (-a) or --private-key must be provided for write functions");
+  //   process.exit(1);
+  // }
+  // console.log(`Executing ${func.name} with args:`, functionArgs);
+  // try {
+  //   console.log(`Calling view function on ${func.name}...`);
+  //   const result = await executeContractFunction(func, functionArgs, options);
+  //   console.log(`Result:`, result);
+  // } catch (error) {
+  //   console.error(`Error executing function:`, error);
+  //   process.exit(1);
+  // }
 }
 
-// Removed duplicate interface definitions - now imported from types.ts
+// // Removed duplicate interface definitions - now imported from types.ts
 
-// Import loadUniverseConfigs from config.ts instead of duplicating it
-import { loadUniverseConfigs } from "./config";
+// // Import loadUniverseConfigs from config.ts instead of duplicating it
+// import { loadUniverseConfigs } from "./config";
 
-// Import client functions from client.ts
-import { executeContractFunction } from "./client";
+// // Import client functions from client.ts
 
-/**
- * Extracts NatSpec documentation from ABI
- * @param abi - The ABI object
- * @returns Object containing method and event documentation
- */
-function extractNatSpec(abi: any) {
-  // Check if metadata exists
-  if (!abi.metadata) {
-    return { methods: {}, events: {} };
-  }
+// export function generateCommandFromAbiFunction(
+//   program: Command,
+//   abiFunction: any,
+//   contractName: string,
+//   natspec: any
+// ): void {
+//   // Skip if not a function
+//   if (abiFunction.type !== "function") {
+//     return;
+//   }
 
-  try {
-    // Parse metadata if it's a string
-    const metadata = typeof abi.metadata === "string" ? JSON.parse(abi.metadata) : abi.metadata;
+//   // Create function detail
+//   const functionDetail = processAbi(
+//     { abi: [abiFunction], metadata: { output: { devdoc: {}, userdoc: {} } } },
+//     contractName
+//   )[0];
 
-    // Extract documentation
-    const devdoc = metadata.output?.devdoc || {};
-    const userdoc = metadata.output?.userdoc || {};
+//   // Override with natspec if available
+//   const functionKey = functionDetail.signature;
+//   const methodDocs = natspec.methods[functionKey] || {};
+//   functionDetail.description = methodDocs.notice || functionDetail.description;
 
-    // Merge method documentation from both devdoc and userdoc
-    const methods: Record<string, any> = {};
-    
-    // First add all methods from devdoc
-    if (devdoc.methods) {
-      Object.entries(devdoc.methods).forEach(([key, value]) => {
-        methods[key] = {
-          ...value,
-          details: (value as any)?.details || undefined
-        };
-      });
-    }
-    
-    // Then merge in userdoc methods
-    if (userdoc.methods) {
-      Object.entries(userdoc.methods).forEach(([key, value]) => {
-        if (!methods[key]) {
-          methods[key] = {};
-        }
-        // Add notice from userdoc
-        methods[key] = {
-          ...methods[key],
-          notice: (value as any)?.notice || undefined
-        };
-      });
-    }
+//   functionDetail.inputs.forEach((input) => {
+//     input.description = methodDocs.params?.[input.name] || input.description;
+//   });
 
-    return {
-      title: devdoc.title || userdoc.notice || "",
-      methods,
-      events: {
-        ...devdoc.events,
-        ...userdoc.events,
-      },
-    };
-  } catch (error) {
-    console.error("Error parsing NatSpec metadata:", error);
-    return { methods: {}, events: {} };
-  }
-}
+//   // Create nested command structure
+//   // Find or create contract subcommand
+//   let contractCommand = program.commands.find((cmd) => cmd.name() === contractName);
+//   if (!contractCommand) {
+//     contractCommand = program.command(contractName).description(`Commands for ${contractName} contract`);
+//   }
 
-/**
- * Generates a commander command from a Solidity function definition
- * @param program - The commander program to add the command to
- * @param abiFunction - The function definition from the ABI
- * @param contractName - Name of the contract for command grouping
- * @param natspec - NatSpec documentation
- */
-export function generateCommandFromAbiFunction(
-  program: Command,
-  abiFunction: any,
-  contractName: string,
-  natspec: any
-): void {
-  // Skip if not a function
-  if (abiFunction.type !== "function") {
-    return;
-  }
+//   // Create or find nested command structure
+//   let currentCommand = contractCommand;
+//   for (let i = 0; i < functionDetail.commandPath.length - 1; i++) {
+//     const part = functionDetail.commandPath[i];
+//     let subCommand = currentCommand.commands.find((cmd) => cmd.name() === part);
+//     if (!subCommand) {
+//       subCommand = currentCommand.command(part).description(`${part} commands`);
+//     }
+//     currentCommand = subCommand;
+//   }
 
-  // Create function detail
-  const functionDetail = processAbi(
-    { abi: [abiFunction], metadata: { output: { devdoc: {}, userdoc: {} } } },
-    contractName
-  )[0];
-
-  // Override with natspec if available
-  const functionKey = functionDetail.signature;
-  const methodDocs = natspec.methods[functionKey] || {};
-  functionDetail.description = methodDocs.notice || functionDetail.description;
-
-  functionDetail.inputs.forEach((input) => {
-    input.description = methodDocs.params?.[input.name] || input.description;
-  });
-
-  // Create nested command structure
-  // Find or create contract subcommand
-  let contractCommand = program.commands.find((cmd) => cmd.name() === contractName);
-  if (!contractCommand) {
-    contractCommand = program.command(contractName).description(`Commands for ${contractName} contract`);
-  }
-
-  // Create or find nested command structure
-  let currentCommand = contractCommand;
-  for (let i = 0; i < functionDetail.commandPath.length - 1; i++) {
-    const part = functionDetail.commandPath[i];
-    let subCommand = currentCommand.commands.find((cmd) => cmd.name() === part);
-    if (!subCommand) {
-      subCommand = currentCommand.command(part).description(`${part} commands`);
-    }
-    currentCommand = subCommand;
-  }
-
-  // Generate the leaf command
-  generateCommandFromDetail(currentCommand, functionDetail);
-}
+//   // Generate the leaf command
+//   generateCommandFromDetail(currentCommand, functionDetail);
+// }
 
 /**
  * Configures a commander program with commands from an ABI file
@@ -297,66 +214,63 @@ export function generateCommandFromAbiFunction(
  * @param abiPath - Path to the ABI file
  * @returns The configured program
  */
-export function configureCommandsFromAbi(program: Command, abiPath: string): Command {
-  try {
-    // Read and parse the ABI file
-    const abiContent = fs.readFileSync(path.resolve(abiPath), "utf8");
-    const abi = JSON.parse(abiContent);
+// export function configureCommandsFromAbi(program: Command, abiPath: string): Command {
+//   try {
+//     // Read and parse the ABI file
+//     const abiContent = fs.readFileSync(path.resolve(abiPath), "utf8");
+//     const abi = JSON.parse(abiContent);
 
-    // Extract contract name from file path
-    const contractName = path.basename(abiPath, path.extname(abiPath));
+//     // Extract contract name from file path
+//     const contractName = path.basename(abiPath, path.extname(abiPath));
 
-    // Extract NatSpec documentation
-    const natspec = extractNatSpec(abi);
+//     // Process the ABI to get function details
+//     const functionDetails = processAbi(abi);
 
-    // Process the ABI to get function details
-    const functionDetails = processAbi(abi, contractName);
+//     // Group functions by their first command path segment to avoid duplicates
+//     const groupedFunctions = functionDetails.reduce((acc: Record<string, ContractFunctionDetail[]>, func) => {
+//       const firstSegment = func.commandPath[0];
+//       if (!acc[firstSegment]) {
+//         acc[firstSegment] = [];
+//       }
+//       acc[firstSegment].push(func);
+//       return acc;
+//     }, {});
 
-    // Group functions by their first command path segment to avoid duplicates
-    const groupedFunctions = functionDetails.reduce((acc: Record<string, ContractFunctionDetail[]>, func) => {
-      const firstSegment = func.commandPath[0];
-      if (!acc[firstSegment]) {
-        acc[firstSegment] = [];
-      }
-      acc[firstSegment].push(func);
-      return acc;
-    }, {});
+//     // Create contract command
+//     let contractCommand = program.commands.find((cmd) => cmd.name() === contractName);
+//     if (!contractCommand) {
+//       contractCommand = program.command(contractName).description(`Commands for ${contractName} contract`);
+//     }
 
-    // Create contract command
-    let contractCommand = program.commands.find((cmd) => cmd.name() === contractName);
-    if (!contractCommand) {
-      contractCommand = program.command(contractName).description(`Commands for ${contractName} contract`);
-    }
+//     // Process each function group
+//     Object.entries(groupedFunctions).forEach(([firstSegment, funcs]) => {
+//       // Create first level subcommand
+//       let subCommand = contractCommand.commands.find((cmd) => cmd.name() === firstSegment);
+//       if (!subCommand) {
+//         subCommand = contractCommand.command(firstSegment).description(`${firstSegment} commands`);
+//       }
 
-    // Process each function group
-    Object.entries(groupedFunctions).forEach(([firstSegment, funcs]) => {
-      // Create first level subcommand
-      let subCommand = contractCommand.commands.find((cmd) => cmd.name() === firstSegment);
-      if (!subCommand) {
-        subCommand = contractCommand.command(firstSegment).description(`${firstSegment} commands`);
-      }
+//       // Process each function in the group
+//       funcs.forEach((func) => {
+//         // Create nested command structure
+//         let currentCommand = subCommand;
+//         for (let i = 1; i < func.commandPath.length - 1; i++) {
+//           const part = func.commandPath[i];
+//           let nextCommand = currentCommand.commands.find((cmd) => cmd.name() === part);
+//           if (!nextCommand) {
+//             nextCommand = currentCommand.command(part).description(`${part} commands`);
+//           }
+//           currentCommand = nextCommand;
+//         }
 
-      // Process each function in the group
-      funcs.forEach((func) => {
-        // Create nested command structure
-        let currentCommand = subCommand;
-        for (let i = 1; i < func.commandPath.length - 1; i++) {
-          const part = func.commandPath[i];
-          let nextCommand = currentCommand.commands.find((cmd) => cmd.name() === part);
-          if (!nextCommand) {
-            nextCommand = currentCommand.command(part).description(`${part} commands`);
-          }
-          currentCommand = nextCommand;
-        }
+//         // Generate the leaf command
+//         generateCommandFromDetail(currentCommand, func);
+//       });
+//     });
 
-        // Generate the leaf command
-        generateCommandFromDetail(currentCommand, func);
-      });
-    });
-
-    return program;
-  } catch (error) {
-    console.error(`Error processing ABI file ${abiPath}:`, error);
-    return program;
-  }
-}
+//     return program;
+//   } catch (error) {
+//     console.error(`Error processing ABI file ${abiPath}:`, error);
+//     return program;
+//   }
+// }
