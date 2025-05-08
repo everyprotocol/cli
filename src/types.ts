@@ -1,3 +1,5 @@
+import { getFunctionSignature } from 'viem';
+
 /**
  * Represents a function from a contract ABI with its documentation
  */
@@ -19,15 +21,13 @@ export interface ContractFunctionDetail {
   }>;
   stateMutability: string;
 
-  // ai! remove the following 3 fields
   /** Additional fields for CLI processing */
-  signature: string;
   contractName: string;
   commandPath: string[];
 
   /** Merged metadata from userdoc and devdoc */
   _metadata?: {
-    signature: string; // ai! add this, andd use import { getFunctionSignature } from 'viem' to calculate the signature with the standard abi fields
+    signature?: string;
     notice?: string;
     params?: Record<string, string>;
     returns?: Record<string, string>;

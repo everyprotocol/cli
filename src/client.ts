@@ -139,7 +139,12 @@ async function executeReadFunction(
   } else {
     // For simple return types, use the constructed signature
     const returnTypes = functionDetail.outputs.map((output) => output.type).join(",");
-    const fullSignature = `function ${functionDetail.signature} returns (${returnTypes})`;
+    const signature = functionDetail._metadata?.signature || 
+      getFunctionSignature({
+        name: functionDetail.name,
+        inputs: functionDetail.inputs,
+      });
+    const fullSignature = `function ${signature} returns (${returnTypes})`;
 
     return await publicClient.readContract({
       address: contractAddress,
@@ -196,7 +201,10 @@ async function executeWriteFunction(
   // Prepare the transaction
   const { request } = await publicClient.simulateContract({
     address: contractAddress,
-    abi: parseAbi([`function ${functionDetail.signature}`]),
+    abi: parseAbi([`function ${functionDetail._metadata?.signature || getFunctionSignature({
+      name: functionDetail.name,
+      inputs: functionDetail.inputs,
+    })}`]),
     functionName: functionDetail.name,
     args: args as any[],
     account: walletClient.account,

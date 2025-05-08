@@ -1,6 +1,7 @@
 import { Command, type OptionValues } from "commander";
 import fs from "fs";
 import path from "path";
+import { getFunctionSignature } from "viem";
 import type { ContractFunctionDetail } from "./types";
 
 /**
@@ -25,8 +26,11 @@ export function processAbi(abi: any, contractName: string): ContractFunctionDeta
   return abiArray
     .filter((item: any) => item.type === "function")
     .map((func: any) => {
-      // Create function signature for looking up docs
-      const signature = `${func.name}(${func.inputs.map((i: any) => i.type).join(",")})`;
+      // Create function signature for looking up docs using viem
+      const signature = getFunctionSignature({
+        name: func.name,
+        inputs: func.inputs,
+      });
 
       // Get function documentation
       const methodDocs = natspec.methods[signature] || {};
@@ -41,10 +45,10 @@ export function processAbi(abi: any, contractName: string): ContractFunctionDeta
       // Create the function detail object based on the ABI structure
       const functionDetail: ContractFunctionDetail = {
         ...func, // Copy all original ABI fields
-        signature,
         contractName,
         commandPath,
         _metadata: {
+          signature,
           notice: methodDocs.notice || `Call ${func.name} function`,
           details: methodDocs.details,
           params: methodDocs.params || {},
@@ -68,7 +72,11 @@ export function generateCommandFromDetail(command: Command, functionDetail: Cont
   // Create a more descriptive command description that includes signature info
   let description = functionDetail._metadata?.notice || `Call ${functionDetail.name} function`;
   if (functionDetail.inputs.length > 0) {
-    const signature = `${functionDetail.name}(${functionDetail.inputs.map((i) => i.type).join(", ")})`;
+    const signature = functionDetail._metadata?.signature || 
+      getFunctionSignature({
+        name: functionDetail.name,
+        inputs: functionDetail.inputs,
+      });
     description = `${description} [${signature}]`;
   }
 
