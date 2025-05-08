@@ -151,15 +151,17 @@ export function generateCommandFromDetail(command: Command, functionDetail: Cont
 
     try {
       if (isViewFunction) {
-        // For view functions, use callFunction
         console.log(`Calling view function on ${functionDetail.contractName}...`);
-        const result = await callFunction(functionDetail, functionArgs, options);
+      } else {
+        console.log(`Sending transaction to ${functionDetail.contractName}...`);
+      }
+      
+      const result = await executeContractFunction(functionDetail, functionArgs, options);
+      
+      if (isViewFunction) {
         console.log(`Result:`, result);
       } else {
-        // For write functions, use sendTransaction
-        console.log(`Sending transaction to ${functionDetail.contractName}...`);
-        const txHash = await sendTransaction(functionDetail, functionArgs, options);
-        console.log(`Transaction hash:`, txHash);
+        console.log(`Transaction hash:`, result);
       }
     } catch (error) {
       console.error(`Error executing function:`, error);
@@ -176,7 +178,7 @@ export function generateCommandFromDetail(command: Command, functionDetail: Cont
 import { loadUniverseConfigs } from "./config";
 
 // Import client functions from client.ts
-import { callFunction, sendTransaction } from "./client";
+import { executeContractFunction } from "./client";
 
 /**
  * Extracts NatSpec documentation from ABI
