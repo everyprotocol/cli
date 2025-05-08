@@ -205,11 +205,19 @@ interface EveryConfig {
   >;
 }
 
+// Cache for universe configs to avoid repeated loading
+let universeConfigsCache: Map<string, UniverseConfig> | null = null;
+
 /**
  * Load universe configurations from config files and environment
  * @returns Map of universe configurations
  */
 function loadUniverseConfigs(): Map<string, UniverseConfig> {
+  // Return cached config if available
+  if (universeConfigsCache) {
+    return universeConfigsCache;
+  }
+  
   // Load environment variables from .env file if it exists
   dotenv.config();
 
@@ -335,6 +343,8 @@ function loadUniverseConfigs(): Map<string, UniverseConfig> {
     console.warn("No universe configurations found. Please create a .every.toml file.");
   }
 
+  // Cache the configs for future use
+  universeConfigsCache = configs;
   return configs;
 }
 
@@ -393,7 +403,7 @@ async function callFunction(functionDetail: ContractFunctionDetail, args: any[],
   // Create public client
   const publicClient = getPublicClient(universeName);
 
-  // Create contract instance
+  // Create contract instance with the full ABI function
   const contract = getContract({
     address: contractAddress as Address,
     abi: parseAbi([`function ${functionDetail.signature}`]),
@@ -401,8 +411,8 @@ async function callFunction(functionDetail: ContractFunctionDetail, args: any[],
   });
 
   try {
-    // Call the function
-    const result = await contract.read[functionDetail.name](args);
+    // Call the function using the proper method
+    const result = await contract.read[functionDetail.name](args as any[]);
     return result;
   } catch (error) {
     console.error(`Error calling ${functionDetail.name}:`, error);
