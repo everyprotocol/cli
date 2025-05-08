@@ -14,42 +14,42 @@ const commandConfigs: CommandConfig[] = [
   {
     name: "kind",
     abiFile: "IKindRegistry.json",
-    filter: () => true
+    filter: () => true, // ai! make this optional, if undefined, do not filter
   },
   {
     name: "set",
     abiFile: "ISetRegistry.json",
-    filter: () => true
+    filter: () => true,
   },
   {
     name: "relation",
     abiFile: "IOmniRegistry.json",
-    filter: (func) => func.name.startsWith("relation")
+    filter: (func) => func.name.startsWith("relation"),
   },
   {
     name: "mintpolicy",
     abiFile: "IObjectMinter.json",
-    filter: () => true
+    filter: () => true,
   },
   {
     name: "object",
     abiFile: "ISet.json",
-    filter: () => true
+    filter: () => true,
   },
   {
     name: "unique",
     abiFile: "IElementRegistry.json",
-    filter: (func) => func.name.startsWith("unique")
+    filter: (func) => func.name.startsWith("unique"),
   },
   {
     name: "value",
     abiFile: "IElementRegistry.json",
-    filter: (func) => func.name.startsWith("value")
-  }
+    filter: (func) => func.name.startsWith("value"),
+  },
 ];
 
 // Configure all commands
-commandConfigs.forEach(config => {
+commandConfigs.forEach((config) => {
   configureSubCommand(program, config);
 });
 
