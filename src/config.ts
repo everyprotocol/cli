@@ -7,20 +7,19 @@ import type { EveryConfig, UniverseConfig } from "./types";
 import { OptionValues } from "commander";
 
 // Cache to avoid repeated loading
+// ai!, this should be a EveryConfig also
 let universeConfigsCache: Map<string, UniverseConfig> | null = null;
 
 export function getUniverseConfig(opts: OptionValues): UniverseConfig {
   const config = loadUniverseConfigs();
   const universeName = opts.universe || "local";
   const universe = config.universes[universeName];
-  
+
   if (!universe) {
     const availableUniverses = Object.keys(config.universes).join(", ");
-    throw Error(
-      `Universe "${universeName}" not found in configuration. Available universes: ${availableUniverses}`
-    );
+    throw Error(`Universe "${universeName}" not found in configuration. Available universes: ${availableUniverses}`);
   }
-  
+
   return universe;
 }
 
@@ -29,7 +28,7 @@ function loadUniverseConfigs(): EveryConfig {
     const defaultUniverse = "local";
     return {
       general: { default_universe: defaultUniverse },
-      universes: Object.fromEntries(universeConfigsCache.entries())
+      universes: Object.fromEntries(universeConfigsCache.entries()),
     };
   }
 
@@ -90,11 +89,11 @@ function loadUniverseConfigs(): EveryConfig {
   }
 
   universeConfigsCache = configs;
-  
+
   // Convert Map to EveryConfig format
   const defaultUniverse = "local";
   return {
     general: { default_universe: defaultUniverse },
-    universes: Object.fromEntries(configs.entries())
+    universes: Object.fromEntries(configs.entries()),
   };
 }
