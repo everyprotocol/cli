@@ -2,6 +2,12 @@ import { Command } from "commander";
 import fs from "fs";
 import path from "path";
 
+// ai! define a type (say ContractFunctionDetail, you might change the name if appropriate )for an abi function, including all the information collected from json paths such as .abi, .metadata.output.devdoc, .metadata.output.userdoc. there might be some functions with the same name but different signatures, keep them all(choose unique key)
+
+// ai! add a function to process an abi and returns an array of ContractFunctionDetails
+
+// ai! add a function to generate a command(the leaf command, no subcommands anymore) from a ContractFunctionDetails
+
 /**
  * Extracts NatSpec documentation from ABI
  * @param abi - The ABI object
@@ -12,27 +18,25 @@ function extractNatSpec(abi: any) {
   if (!abi.metadata) {
     return { methods: {}, events: {} };
   }
-  
+
   try {
     // Parse metadata if it's a string
-    const metadata = typeof abi.metadata === 'string' 
-      ? JSON.parse(abi.metadata) 
-      : abi.metadata;
-    
+    const metadata = typeof abi.metadata === "string" ? JSON.parse(abi.metadata) : abi.metadata;
+
     // Extract documentation
     const devdoc = metadata.output?.devdoc || {};
     const userdoc = metadata.output?.userdoc || {};
-    
+
     return {
-      title: devdoc.title || userdoc.notice || '',
+      title: devdoc.title || userdoc.notice || "",
       methods: {
         ...devdoc.methods,
-        ...userdoc.methods
+        ...userdoc.methods,
       },
       events: {
         ...devdoc.events,
-        ...userdoc.events
-      }
+        ...userdoc.events,
+      },
     };
   } catch (error) {
     console.error("Error parsing NatSpec metadata:", error);
@@ -48,8 +52,8 @@ function extractNatSpec(abi: any) {
  * @param natspec - NatSpec documentation
  */
 export function generateCommandFromAbiFunction(
-  program: Command, 
-  abiFunction: any, 
+  program: Command,
+  abiFunction: any,
   contractName: string,
   natspec: any
 ): void {
@@ -59,41 +63,42 @@ export function generateCommandFromAbiFunction(
   }
 
   const functionName = abiFunction.name;
-  
+
   // Get function documentation
-  const functionKey = `${functionName}(${abiFunction.inputs.map((i: any) => i.type).join(',')})`;
+  const functionKey = `${functionName}(${abiFunction.inputs.map((i: any) => i.type).join(",")})`;
   const methodDocs = natspec.methods[functionKey] || {};
-  
+
   // Get user-friendly description
   const functionDescription = methodDocs.notice || `Call ${functionName} function`;
-  
+
   // Create nested command structure
   // Find or create contract subcommand
-  let contractCommand = program.commands.find(cmd => cmd.name() === contractName);
+  let contractCommand = program.commands.find((cmd) => cmd.name() === contractName);
   if (!contractCommand) {
-    contractCommand = program.command(contractName)
-      .description(`Commands for ${contractName} contract`);
+    contractCommand = program.command(contractName).description(`Commands for ${contractName} contract`);
   }
-  
+
   // Split function name into parts for nested commands (e.g., "uniqueDescriptor" -> "unique descriptor")
-  const parts = functionName.replace(/([A-Z])/g, ' $1').trim().toLowerCase().split(' ');
-  
+  const parts = functionName
+    .replace(/([A-Z])/g, " $1")
+    .trim()
+    .toLowerCase()
+    .split(" ");
+
   // Create or find nested command structure
   let currentCommand = contractCommand;
   for (let i = 0; i < parts.length - 1; i++) {
     const part = parts[i];
-    let subCommand = currentCommand.commands.find(cmd => cmd.name() === part);
+    let subCommand = currentCommand.commands.find((cmd) => cmd.name() === part);
     if (!subCommand) {
-      subCommand = currentCommand.command(part)
-        .description(`${part} commands`);
+      subCommand = currentCommand.command(part).description(`${part} commands`);
     }
     currentCommand = subCommand;
   }
-  
+
   // Create the final command with the last part of the function name
   const lastPart = parts[parts.length - 1];
-  const command = currentCommand.command(lastPart)
-    .description(functionDescription);
+  const command = currentCommand.command(lastPart).description(functionDescription);
 
   // Add arguments for each input parameter
   abiFunction.inputs.forEach((input: any, index: number) => {
@@ -107,7 +112,7 @@ export function generateCommandFromAbiFunction(
     const options = args.pop();
     // Extract the actual arguments
     const functionArgs = args;
-    
+
     console.log(`Executing ${functionName} with args:`, functionArgs);
     // Here you would add the actual contract call logic
   });
