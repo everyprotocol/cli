@@ -43,49 +43,49 @@ export interface ContractFunctionDetail {
 export function processAbi(abi: any, contractName: string): ContractFunctionDetail[] {
   // Extract NatSpec documentation
   const natspec = extractNatSpec(abi);
-  
+
   // Get the ABI array (handle both direct array and nested in "abi" property)
   const abiArray = Array.isArray(abi) ? abi : abi.abi;
-  
+
   if (!abiArray) {
     console.error(`No valid ABI found for ${contractName}`);
     return [];
   }
-  
+
   // Process only functions
   return abiArray
     .filter((item: any) => item.type === "function")
     .map((func: any) => {
       // Create function signature for looking up docs
       const signature = `${func.name}(${func.inputs.map((i: any) => i.type).join(",")})`;
-      
+
       // Get function documentation
       const methodDocs = natspec.methods[signature] || {};
-      
+
       // Process inputs with documentation
       const inputs = func.inputs.map((input: any) => ({
         name: input.name,
         type: input.type,
-        description: methodDocs.params?.[input.name] || `${input.type} parameter`
+        description: methodDocs.params?.[input.name] || `${input.type} parameter`,
       }));
-      
+
       // Process outputs with documentation
       const outputs = func.outputs.map((output: any, index: number) => {
         const outputName = output.name || `output${index}`;
         return {
           name: outputName,
           type: output.type,
-          description: methodDocs.returns?.[outputName] || `${output.type} return value`
+          description: methodDocs.returns?.[outputName] || `${output.type} return value`,
         };
       });
-      
+
       // Split function name into parts for nested commands
       const commandPath = func.name
         .replace(/([A-Z])/g, " $1")
         .trim()
         .toLowerCase()
         .split(" ");
-      
+
       return {
         abiFunction: func,
         name: func.name,
@@ -95,7 +95,7 @@ export function processAbi(abi: any, contractName: string): ContractFunctionDeta
         stateMutability: func.stateMutability,
         description: methodDocs.notice || `Call ${func.name} function`,
         contractName,
-        commandPath
+        commandPath,
       };
     });
 }
@@ -107,25 +107,26 @@ export function processAbi(abi: any, contractName: string): ContractFunctionDeta
  */
 export function generateCommandFromDetail(command: Command, functionDetail: ContractFunctionDetail): Command {
   // Create the command with the last part of the path
-  const leafCommand = command.command(functionDetail.commandPath[functionDetail.commandPath.length - 1])
+  const leafCommand = command
+    .command(functionDetail.commandPath[functionDetail.commandPath.length - 1])
     .description(functionDetail.description);
-  
+
   // Add arguments for each input parameter
-  functionDetail.inputs.forEach(input => {
+  functionDetail.inputs.forEach((input) => {
     leafCommand.argument(`<${input.name}>`, input.description);
   });
-  
+
   // Set the action handler
   leafCommand.action((...args) => {
     // Last argument is the Command object
     const options = args.pop();
     // Extract the actual arguments
     const functionArgs = args;
-    
+
     console.log(`Executing ${functionDetail.name} with args:`, functionArgs);
     // Here you would add the actual contract call logic
   });
-  
+
   return leafCommand;
 }
 
@@ -150,6 +151,8 @@ function extractNatSpec(abi: any) {
 
     return {
       title: devdoc.title || userdoc.notice || "",
+
+      // ai! the since there are two levels in the value of xdoc.methods, the second level is repalced not merged
       methods: {
         ...devdoc.methods,
         ...userdoc.methods,
@@ -184,14 +187,17 @@ export function generateCommandFromAbiFunction(
   }
 
   // Create function detail
-  const functionDetail = processAbi({ abi: [abiFunction], metadata: { output: { devdoc: {}, userdoc: {} } } }, contractName)[0];
-  
+  const functionDetail = processAbi(
+    { abi: [abiFunction], metadata: { output: { devdoc: {}, userdoc: {} } } },
+    contractName
+  )[0];
+
   // Override with natspec if available
   const functionKey = functionDetail.signature;
   const methodDocs = natspec.methods[functionKey] || {};
   functionDetail.description = methodDocs.notice || functionDetail.description;
-  
-  functionDetail.inputs.forEach(input => {
+
+  functionDetail.inputs.forEach((input) => {
     input.description = methodDocs.params?.[input.name] || input.description;
   });
 
@@ -217,6 +223,7 @@ export function generateCommandFromAbiFunction(
   generateCommandFromDetail(currentCommand, functionDetail);
 }
 
+// ai! add
 /**
  * Configures a commander program with commands from an ABI file
  * @param program - The commander program to configure
@@ -263,7 +270,7 @@ export function configureCommandsFromAbi(program: Command, abiPath: string): Com
       }
 
       // Process each function in the group
-      funcs.forEach(func => {
+      funcs.forEach((func) => {
         // Create nested command structure
         let currentCommand = subCommand;
         for (let i = 1; i < func.commandPath.length - 1; i++) {
