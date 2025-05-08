@@ -366,6 +366,8 @@ function getPublicClient(universeName: string): PublicClient {
   });
 }
 
+// ai! write a sendTransaction function for write functions
+
 /**
  * Call a view function on a contract
  * @param functionDetail - Details of the function to call
@@ -424,25 +426,23 @@ async function callFunction(functionDetail: ContractFunctionDetail, args: any[],
     // Call the function directly using publicClient.readContract
     // Handle tuple types specially to avoid abitype errors
     let result;
-    
+
     // Check if any output type is a tuple
-    const hasTupleOutput = functionDetail.outputs.some(output => 
-      output.type === 'tuple' || output.type.includes('tuple['));
-    
+    const hasTupleOutput = functionDetail.outputs.some(
+      (output) => output.type === "tuple" || output.type.includes("tuple[")
+    );
+
     if (hasTupleOutput) {
       // For functions with tuple returns, use the original ABI function
       const abiPath = path.resolve(process.cwd(), "abis", `${functionDetail.contractName}.json`);
       const abiContent = fs.readFileSync(abiPath, "utf8");
       const fullAbi = JSON.parse(abiContent).abi;
-      
+
       // Find the matching function in the ABI
-      const abiFunctions = fullAbi.filter((item: any) => 
-        item.type === 'function' && 
-        item.name === functionDetail.name
-      );
-      
+      const abiFunctions = fullAbi.filter((item: any) => item.type === "function" && item.name === functionDetail.name);
+
       console.log({ args, options, contractKey, contractAddress, functionName: functionDetail.name });
-      
+
       // Use the full ABI for the call
       result = await publicClient.readContract({
         address: contractAddress as Address,
@@ -455,7 +455,7 @@ async function callFunction(functionDetail: ContractFunctionDetail, args: any[],
       const returnTypes = functionDetail.outputs.map((output) => output.type).join(",");
       const fullSignature = `function ${functionDetail.signature} returns (${returnTypes})`;
       console.log({ args, options, contractKey, contractAddress, fullSignature });
-      
+
       result = await publicClient.readContract({
         address: contractAddress as Address,
         abi: parseAbi([fullSignature]),
@@ -463,7 +463,7 @@ async function callFunction(functionDetail: ContractFunctionDetail, args: any[],
         args: args as any[],
       });
     }
-    
+
     console.log(result);
     return result;
   } catch (error) {
