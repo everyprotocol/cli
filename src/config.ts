@@ -4,9 +4,19 @@ import os from "os";
 import dotenv from "dotenv";
 import { parse as parseTOML } from "@iarna/toml";
 import type { EveryConfig, UniverseConfig } from "./types";
+import { OptionValues } from "commander";
+
+// ai! refactor, simplify and be concise
 
 // Cache for universe configs to avoid repeated loading
 let universeConfigsCache: Map<string, UniverseConfig> | null = null;
+
+export function getUniverseConfig(opts: OptionValues): UniverseConfig {
+  const configs = loadUniverseConfigs();
+  const config = configs.get(opts.universe);
+  if (!config) throw Error();
+  return config;
+}
 
 /**
  * Load universe configurations from config files and environment
@@ -109,7 +119,7 @@ export function loadUniverseConfigs(): Map<string, UniverseConfig> {
     for (const [name, universe] of Object.entries(configData.universes)) {
       configs.set(name, {
         name: universe.name,
-        rpcUrl: universe.rpc_url,
+        rpc_url: universe.rpc_url,
         contracts: universe.contracts || {},
       });
     }
@@ -132,7 +142,7 @@ export function loadUniverseConfigs(): Map<string, UniverseConfig> {
 
     configs.set(envUniverseName, {
       name: envUniverseName,
-      rpcUrl: envRpcUrl,
+      rpc_url: envRpcUrl,
       contracts,
     });
 
