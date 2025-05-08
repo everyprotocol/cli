@@ -195,11 +195,14 @@ interface EveryConfig {
   general: {
     defaultUniverse: string;
   };
-  universes: Record<string, {
-    name: string;
-    rpc_url: string;
-    contracts: Record<string, string>;
-  }>;
+  universes: Record<
+    string,
+    {
+      name: string;
+      rpc_url: string;
+      contracts: Record<string, string>;
+    }
+  >;
 }
 
 /**
@@ -215,45 +218,45 @@ function loadUniverseConfigs(): Map<string, UniverseConfig> {
 
   // Define possible config file locations in order of precedence
   const configLocations = [
-    path.resolve(process.cwd(), '.every.toml'),                // Current directory
-    path.resolve(os.homedir(), '.every.toml'),                 // User's home directory
-    path.resolve(process.cwd(), 'node_modules/every-cli/.every.toml') // Package default
+    path.resolve(process.cwd(), ".every.toml"), // Current directory
+    path.resolve(os.homedir(), ".every.toml"), // User's home directory
+    path.resolve(process.cwd(), "node_modules/every-cli/.every.toml"), // Package default
   ];
 
   // Try to load from config files in order of precedence
   for (const configPath of configLocations) {
     if (fs.existsSync(configPath)) {
       try {
-        const configContent = fs.readFileSync(configPath, 'utf8');
+        const configContent = fs.readFileSync(configPath, "utf8");
         const parsedConfig = parseTOML(configContent) as any;
-        
+
         // If we already have a config, merge this one into it
         if (configData) {
           // Merge universes
           if (parsedConfig.universes) {
             configData.universes = {
               ...configData.universes,
-              ...parsedConfig.universes
+              ...parsedConfig.universes,
             };
           }
-          
+
           // Override general settings
           if (parsedConfig.general) {
             configData.general = {
               ...configData.general,
-              ...parsedConfig.general
+              ...parsedConfig.general,
             };
           }
         } else {
           // First config found, use it as base
           configData = {
             general: {
-              defaultUniverse: parsedConfig.general?.default_universe || 'mainnet'
+              defaultUniverse: parsedConfig.general?.default_universe || "mainnet",
             },
-            universes: parsedConfig.universes || {}
+            universes: parsedConfig.universes || {},
           };
         }
-        
+
         console.log(`Loaded configuration from ${configPath}`);
       } catch (error) {
         console.warn(`Failed to load ${configPath}:`, error);
@@ -266,15 +269,15 @@ function loadUniverseConfigs(): Map<string, UniverseConfig> {
     const jsonConfigPath = path.resolve(process.cwd(), "config.json");
     if (fs.existsSync(jsonConfigPath)) {
       const jsonConfig = JSON.parse(fs.readFileSync(jsonConfigPath, "utf8"));
-      
+
       // If we don't have a config yet, create one
       if (!configData) {
         configData = {
-          general: { defaultUniverse: 'mainnet' },
-          universes: {}
+          general: { defaultUniverse: "mainnet" },
+          universes: {},
         };
       }
-      
+
       // Add universes from JSON config
       if (jsonConfig.universes) {
         for (const [name, universe] of Object.entries(jsonConfig.universes)) {
@@ -282,11 +285,11 @@ function loadUniverseConfigs(): Map<string, UniverseConfig> {
           configData.universes[name] = {
             name: u.name,
             rpc_url: u.rpcUrl,
-            contracts: u.contracts || {}
+            contracts: u.contracts || {},
           };
         }
       }
-      
+
       console.log(`Loaded configuration from ${jsonConfigPath}`);
     }
   } catch (error) {
@@ -299,7 +302,7 @@ function loadUniverseConfigs(): Map<string, UniverseConfig> {
       configs.set(name, {
         name: universe.name,
         rpcUrl: universe.rpc_url,
-        contracts: universe.contracts || {}
+        contracts: universe.contracts || {},
       });
     }
   }
@@ -324,7 +327,7 @@ function loadUniverseConfigs(): Map<string, UniverseConfig> {
       rpcUrl: envRpcUrl,
       contracts,
     });
-    
+
     console.log(`Added environment-based configuration for universe "${envUniverseName}"`);
   }
 
@@ -375,6 +378,7 @@ async function callFunction(functionDetail: ContractFunctionDetail, args: any[],
   }
 
   // Get contract address
+  // ai! the key to contract address in config file can be calculated like this IKindRegistry => kind_registry
   const contractAddress = universe.contracts[functionDetail.contractName];
   if (!contractAddress) {
     throw new Error(`Contract "${functionDetail.contractName}" not found in universe "${universeName}"`);
