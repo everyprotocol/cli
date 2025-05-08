@@ -7,10 +7,10 @@ import {
   parseAbi, 
   getContract, 
   createWalletClient,
-  privateKeyToAccount,
   type PublicClient, 
   type Address 
 } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 import dotenv from "dotenv";
 import { parse as parseTOML } from "@iarna/toml";
 import os from "os";
