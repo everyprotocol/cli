@@ -401,13 +401,14 @@ async function callFunction(functionDetail: ContractFunctionDetail, args: any[],
       `Contract "${functionDetail.contractName}" (key: ${contractKey}) not found in universe "${universeName}"`
     );
   }
-  
+
   // Ensure the address is properly formatted as a hex string
-  const contractAddress = typeof rawContractAddress === 'string' 
-    ? rawContractAddress.startsWith('0x') 
-      ? rawContractAddress 
-      : `0x${rawContractAddress}`
-    : `0x${rawContractAddress.toString(16)}`;
+  const contractAddress =
+    typeof rawContractAddress === "string"
+      ? rawContractAddress.startsWith("0x")
+        ? rawContractAddress
+        : `0x${rawContractAddress}`
+      : `0x${rawContractAddress.toString(16)}`;
 
   // Create public client
   const publicClient = getPublicClient(universeName);
@@ -424,10 +425,11 @@ async function callFunction(functionDetail: ContractFunctionDetail, args: any[],
     // Call the function directly using publicClient.readContract
     const result = await publicClient.readContract({
       address: contractAddress as Address,
-      abi: parseAbi([`function ${functionDetail.signature}`]),
+      abi: parseAbi([`function ${functionDetail.signature}`]), // ai! the return signature not included
       functionName: functionDetail.name,
       args: args as any[],
     });
+    console.log(result);
     return result;
   } catch (error) {
     console.error(`Error calling ${functionDetail.name}:`, error);
