@@ -100,9 +100,6 @@ export function processAbi(abi: any, contractName: string): ContractFunctionDeta
     });
 }
 
-// ai! add options for contract functions, if it's a view function, add --universe(-u), if it's a write funciton, add --universe(-u), --account(-a), --private-key(-k),  --password(-p) or --password-file(--pf) the password options can be ommited meaning user will input from the terminal, either -a or -k must be present
-//
-
 /**
  * Generates a command from a ContractFunctionDetail
  * @param command - The parent command to add to
@@ -137,9 +134,9 @@ export function generateCommandFromDetail(command: Command, functionDetail: Cont
   if (!isViewFunction) {
     leafCommand
       .option("-a, --account <address>", "Account address to use for the transaction")
-      .option("--private-key <key>", "Private key to sign the transaction")
-      .option("-p, --password <password>", "Password to decrypt the private key")
-      .option("--password-file <file>", "File containing the password to decrypt the private key");
+      .option("-k, --private-key <key>", "Private key to sign the transaction")
+      .option("-p, --password [password]", "Password to decrypt the private key")
+      .option("--pf, --password-file <file>", "File containing the password to decrypt the private key");
   }
 
   // Set the action handler
