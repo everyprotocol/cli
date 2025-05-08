@@ -1,4 +1,4 @@
-import { Command } from "commander";
+import { Command, type OptionValues } from "commander";
 import fs from "fs";
 import path from "path";
 
@@ -134,19 +134,15 @@ export function generateCommandFromDetail(command: Command, functionDetail: Cont
   if (!isViewFunction) {
     leafCommand
       .option("-a, --account <address>", "Account address to use for the transaction")
-      .option("-k, --private-key <key>", "Private key to sign the transaction")
+      .option("--private-key <key>", "Private key to sign the transaction")
       .option("-p, --password [password]", "Password to decrypt the private key")
-      .option("--pf, --password-file <file>", "File containing the password to decrypt the private key");
+      .option("--password-file <file>", "File containing the password to decrypt the private key");
   }
 
   // Set the action handler
-  leafCommand.action((...args) => {
-    // Last argument is the Command object
-    const options = args.pop();
-    // Extract the actual arguments
-    const functionArgs = args;
-
-    // Validate options for write functions
+  leafCommand.action(function () {
+    const options = this.opts();
+    const functionArgs = this.args;
     if (!isViewFunction) {
       if (!options.account && !options.privateKey) {
         console.error("Error: Either --account (-a) or --private-key (-k) must be provided for write functions");
@@ -161,6 +157,11 @@ export function generateCommandFromDetail(command: Command, functionDetail: Cont
 
   return leafCommand;
 }
+
+// ai! implement a callFunction function as a general action for view functions
+// the target contract address is determinted from config file, queried by the --universe value
+// the function signature is arealdy determined in the function detail
+// use viem framework for contract interaction
 
 /**
  * Extracts NatSpec documentation from ABI
