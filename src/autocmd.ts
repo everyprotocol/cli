@@ -4,6 +4,7 @@ import path from "path";
 import { createPublicClient, http, parseAbi, getContract, type PublicClient, type Address } from "viem";
 import dotenv from "dotenv";
 
+// ai! use .every.toml as the primary config file, the package will provides a default one, but user can overrite it with files in their home dirs
 /**
  * Represents a function from a contract ABI with its documentation
  */
@@ -145,7 +146,7 @@ export function generateCommandFromDetail(command: Command, functionDetail: Cont
   leafCommand.action(async function () {
     const options = this.opts();
     const functionArgs = this.args;
-    
+
     // Validate options for write functions
     if (!isViewFunction) {
       if (!options.account && !options.privateKey) {
@@ -155,7 +156,7 @@ export function generateCommandFromDetail(command: Command, functionDetail: Cont
     }
 
     console.log(`Executing ${functionDetail.name} with args:`, functionArgs);
-    
+
     try {
       if (isViewFunction) {
         // For view functions, use callFunction
@@ -192,46 +193,46 @@ interface UniverseConfig {
 function loadUniverseConfigs(): Map<string, UniverseConfig> {
   // Load environment variables from .env file if it exists
   dotenv.config();
-  
+
   const configs = new Map<string, UniverseConfig>();
-  
+
   // Try to load from config file
   try {
-    const configPath = path.resolve(process.cwd(), 'config.json');
+    const configPath = path.resolve(process.cwd(), "config.json");
     if (fs.existsSync(configPath)) {
-      const configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-      
+      const configData = JSON.parse(fs.readFileSync(configPath, "utf8"));
+
       // Process each universe in the config
       for (const [name, config] of Object.entries(configData.universes || {})) {
         configs.set(name, config as UniverseConfig);
       }
     }
   } catch (error) {
-    console.warn('Failed to load config.json:', error);
+    console.warn("Failed to load config.json:", error);
   }
-  
+
   // Add environment-based configuration if available
   const envUniverseName = process.env.UNIVERSE_NAME;
   const envRpcUrl = process.env.RPC_URL;
-  
+
   if (envUniverseName && envRpcUrl) {
     // Extract contract addresses from environment variables
     // Format: CONTRACT_ADDRESS_<CONTRACT_NAME>=0x...
     const contracts: Record<string, string> = {};
     for (const [key, value] of Object.entries(process.env)) {
-      if (key.startsWith('CONTRACT_ADDRESS_') && value) {
-        const contractName = key.replace('CONTRACT_ADDRESS_', '');
+      if (key.startsWith("CONTRACT_ADDRESS_") && value) {
+        const contractName = key.replace("CONTRACT_ADDRESS_", "");
         contracts[contractName] = value;
       }
     }
-    
+
     configs.set(envUniverseName, {
       name: envUniverseName,
       rpcUrl: envRpcUrl,
-      contracts
+      contracts,
     });
   }
-  
+
   return configs;
 }
 
@@ -243,13 +244,13 @@ function loadUniverseConfigs(): Map<string, UniverseConfig> {
 function getPublicClient(universeName: string): PublicClient {
   const universes = loadUniverseConfigs();
   const universe = universes.get(universeName);
-  
+
   if (!universe) {
     throw new Error(`Universe "${universeName}" not found in configuration`);
   }
-  
+
   return createPublicClient({
-    transport: http(universe.rpcUrl)
+    transport: http(universe.rpcUrl),
   });
 }
 
@@ -260,40 +261,36 @@ function getPublicClient(universeName: string): PublicClient {
  * @param options - Command options including universe
  * @returns Promise resolving to the function result
  */
-async function callFunction(
-  functionDetail: ContractFunctionDetail,
-  args: any[],
-  options: any
-): Promise<any> {
+async function callFunction(functionDetail: ContractFunctionDetail, args: any[], options: any): Promise<any> {
   const universeName = options.universe;
   if (!universeName) {
-    throw new Error('Universe option is required (--universe, -u)');
+    throw new Error("Universe option is required (--universe, -u)");
   }
-  
+
   // Load universe configuration
   const universes = loadUniverseConfigs();
   const universe = universes.get(universeName);
-  
+
   if (!universe) {
     throw new Error(`Universe "${universeName}" not found in configuration`);
   }
-  
+
   // Get contract address
   const contractAddress = universe.contracts[functionDetail.contractName];
   if (!contractAddress) {
     throw new Error(`Contract "${functionDetail.contractName}" not found in universe "${universeName}"`);
   }
-  
+
   // Create public client
   const publicClient = getPublicClient(universeName);
-  
+
   // Create contract instance
   const contract = getContract({
     address: contractAddress as Address,
     abi: parseAbi([`function ${functionDetail.signature}`]),
-    publicClient
+    publicClient,
   });
-  
+
   try {
     // Call the function
     const result = await contract.read[functionDetail.name](args);
