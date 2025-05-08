@@ -15,7 +15,6 @@ import os from "os";
 import readline from "readline";
 import { createPublicClient, http, createWalletClient, type PublicClient, type WalletClient, type Address } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { HDAccount, fromPrivateKey, toAccount } from "viem/accounts";
 import type { UniverseConfig } from "./types";
 import { OptionValues } from "commander";
 
@@ -134,17 +133,6 @@ function decryptKeystore(keystore: any, password: string): string {
   }
   
   throw new Error(`Unsupported keystore format`);
-}
-
-export function getContractAddress(config: UniverseConfig, contract: string, args: any[]): Address {
-  // Convert contract name to config key format (e.g., IKindRegistry -> kind_registry)
-  const contractKey = contract
-    .replace(/^I/, "")
-    .replace(/([A-Z])/g, "_$1")
-    .toLowerCase()
-    .replace(/^_/, "");
-  const c = config.contracts[contractKey];
-  return c as Address;
 }
 
 export function getContractAddress(config: UniverseConfig, contract: string, args: any[]): Address {
