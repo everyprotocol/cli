@@ -412,7 +412,8 @@ async function callFunction(functionDetail: ContractFunctionDetail, args: any[],
 
   try {
     // Call the function using the proper method
-    const result = await contract.read[functionDetail.name](args as any[]);
+    // We need to use the function name as a string key for the read object
+    const result = await (contract.read as any)[functionDetail.name](args as any[]);
     return result;
   } catch (error) {
     console.error(`Error calling ${functionDetail.name}:`, error);
