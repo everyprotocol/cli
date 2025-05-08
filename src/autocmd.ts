@@ -1,18 +1,7 @@
 import { Command, type OptionValues } from "commander";
 import fs from "fs";
 import path from "path";
-import { 
-  createPublicClient, 
-  http, 
-  parseAbi, 
-  getContract, 
-  createWalletClient,
-  type PublicClient, 
-  type Address 
-} from "viem";
-import { privateKeyToAccount } from "viem/accounts";
-import dotenv from "dotenv";
-import type { UniverseConfig, ContractFunctionDetail } from "./types";
+import type { ContractFunctionDetail } from "./types";
 
 /**
  * Processes an ABI and extracts detailed function information
@@ -125,28 +114,28 @@ export function generateCommandFromDetail(command: Command, functionDetail: Cont
   leafCommand.action(async function () {
     const options = this.opts();
     const rawArgs = this.args;
-    
+
     // Process arguments to handle arrays and other complex types
     const functionArgs = rawArgs.map((arg: string, index: number) => {
       const paramType = functionDetail.inputs[index]?.type;
-      
+
       // Handle array types
-      if (paramType && (paramType.endsWith('[]') || paramType.includes('['))) {
+      if (paramType && (paramType.endsWith("[]") || paramType.includes("["))) {
         try {
           // Parse JSON string to array
           return JSON.parse(arg);
         } catch (e) {
           console.error(`Error parsing array argument: ${arg}`);
-          throw new Error(`Could not parse argument ${index+1} as array. Please provide a valid JSON array.`);
+          throw new Error(`Could not parse argument ${index + 1} as array. Please provide a valid JSON array.`);
         }
       }
-      
+
       // Handle bytes32 type (ensure proper length)
-      if (paramType === 'bytes32' && arg.startsWith('0x') && arg.length < 66) {
+      if (paramType === "bytes32" && arg.startsWith("0x") && arg.length < 66) {
         // Pad to full bytes32 length
-        return arg.padEnd(66, '0');
+        return arg.padEnd(66, "0");
       }
-      
+
       return arg;
     });
 

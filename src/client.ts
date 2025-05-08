@@ -1,11 +1,11 @@
-import { 
-  createPublicClient, 
-  http, 
-  parseAbi, 
-  getContract, 
+import {
+  createPublicClient,
+  http,
+  parseAbi,
+  getContract,
   createWalletClient,
-  type PublicClient, 
-  type Address 
+  type PublicClient,
+  type Address,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import fs from "fs";
@@ -13,11 +13,8 @@ import path from "path";
 import { loadUniverseConfigs } from "./config";
 import type { ContractFunctionDetail } from "./types";
 
-/**
- * Get a public client for the specified universe
- * @param universeName - Name of the universe to connect to
- * @returns Public client instance
- */
+// ai! refactor this file, make code concise, and rename callFunction and sendTransaction to be unified
+//
 export function getPublicClient(universeName: string): PublicClient {
   const universes = loadUniverseConfigs();
   const universe = universes.get(universeName);
@@ -31,20 +28,16 @@ export function getPublicClient(universeName: string): PublicClient {
   });
 }
 
-/**
- * Send a transaction to a contract (for non-view functions)
- * @param functionDetail - Details of the function to call
- * @param args - Arguments to pass to the function
- * @param options - Command options including universe and account details
- * @returns Promise resolving to the transaction hash
- */
-export async function sendTransaction(functionDetail: ContractFunctionDetail, args: any[], options: any): Promise<string> {
+export async function sendTransaction(
+  functionDetail: ContractFunctionDetail,
+  args: any[],
+  options: any
+): Promise<string> {
   const universeName = options.universe;
   if (!universeName) {
     throw new Error("Universe option is required (--universe, -u)");
   }
 
-  // Load universe configuration
   const universes = loadUniverseConfigs();
   const universe = universes.get(universeName);
 
@@ -52,7 +45,6 @@ export async function sendTransaction(functionDetail: ContractFunctionDetail, ar
     throw new Error(`Universe "${universeName}" not found in configuration`);
   }
 
-  // Get contract address
   const contractKey = functionDetail.contractName
     .replace(/^I/, "")
     .replace(/([A-Z])/g, "_$1")
@@ -66,7 +58,6 @@ export async function sendTransaction(functionDetail: ContractFunctionDetail, ar
     );
   }
 
-  // Ensure the address is properly formatted as a hex string
   const contractAddress =
     typeof rawContractAddress === "string"
       ? rawContractAddress.startsWith("0x")
@@ -74,23 +65,16 @@ export async function sendTransaction(functionDetail: ContractFunctionDetail, ar
         : `0x${rawContractAddress}`
       : `0x${rawContractAddress.toString(16)}`;
 
-  // Create public client
   const publicClient = getPublicClient(universeName);
 
-  // Validate account information
   if (!options.account && !options.privateKey) {
     throw new Error("Either --account (-a) or --private-key must be provided for write functions");
   }
 
-  // Create wallet client based on provided options
   let walletClient;
-  
   if (options.privateKey) {
-    // Use private key if provided
-    const privateKey = options.privateKey.startsWith("0x") 
-      ? options.privateKey 
-      : `0x${options.privateKey}`;
-      
+    const privateKey = options.privateKey.startsWith("0x") ? options.privateKey : `0x${options.privateKey}`;
+
     walletClient = createWalletClient({
       account: privateKeyToAccount(privateKey as `0x${string}`),
       chain: publicClient.chain,
@@ -110,12 +94,12 @@ export async function sendTransaction(functionDetail: ContractFunctionDetail, ar
   }
 
   try {
-    console.log({ 
-      args, 
-      options, 
-      contractKey, 
-      contractAddress, 
-      functionName: functionDetail.name 
+    console.log({
+      args,
+      options,
+      contractKey,
+      contractAddress,
+      functionName: functionDetail.name,
     });
 
     // Prepare the transaction
@@ -143,13 +127,6 @@ export async function sendTransaction(functionDetail: ContractFunctionDetail, ar
   }
 }
 
-/**
- * Call a view function on a contract
- * @param functionDetail - Details of the function to call
- * @param args - Arguments to pass to the function
- * @param options - Command options including universe
- * @returns Promise resolving to the function result
- */
 export async function callFunction(functionDetail: ContractFunctionDetail, args: any[], options: any): Promise<any> {
   const universeName = options.universe;
   if (!universeName) {
@@ -238,8 +215,6 @@ export async function callFunction(functionDetail: ContractFunctionDetail, args:
         args: args as any[],
       });
     }
-
-    console.log(result);
     return result;
   } catch (error) {
     console.error(`Error calling ${functionDetail.name}:`, error);
