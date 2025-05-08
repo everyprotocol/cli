@@ -19,7 +19,7 @@ export function configureSubCommand(program: Command, config: CommandConfig): Co
     const abi = JSON.parse(abiContent);
     const contractName = path.basename(abiFile, path.extname(abiFile));
     const functionDetails = processAbi(abi, contractName);
-    const filteredFunctions = functionDetails.filter(filter);
+    const filteredFunctions = filter ? functionDetails.filter(filter) : functionDetails;
 
     // Group functions by their command name to avoid duplicates
     const groupedByName = new Map<string, ContractFunctionDetail[]>();

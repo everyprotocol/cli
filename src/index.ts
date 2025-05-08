@@ -14,12 +14,10 @@ const commandConfigs: CommandConfig[] = [
   {
     name: "kind",
     abiFile: "IKindRegistry.json",
-    filter: () => true, // ai! make this optional, if undefined, do not filter
   },
   {
     name: "set",
     abiFile: "ISetRegistry.json",
-    filter: () => true,
   },
   {
     name: "relation",
@@ -29,12 +27,10 @@ const commandConfigs: CommandConfig[] = [
   {
     name: "mintpolicy",
     abiFile: "IObjectMinter.json",
-    filter: () => true,
   },
   {
     name: "object",
     abiFile: "ISet.json",
-    filter: () => true,
   },
   {
     name: "unique",

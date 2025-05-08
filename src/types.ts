@@ -34,7 +34,7 @@ export interface CommandConfig {
   name: string;
   abiFile: string;
   rename?: (func: string) => string;
-  filter: (func: ContractFunctionDetail) => boolean;
+  filter?: (func: ContractFunctionDetail) => boolean;
 }
 
 export interface UniverseConfig {
