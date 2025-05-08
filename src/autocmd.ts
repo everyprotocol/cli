@@ -156,7 +156,31 @@ export function generateCommandFromDetail(command: Command, functionDetail: Cont
   // Set the action handler
   leafCommand.action(async function () {
     const options = this.opts();
-    const functionArgs = this.args;
+    const rawArgs = this.args;
+    
+    // Process arguments to handle arrays and other complex types
+    const functionArgs = rawArgs.map((arg: string, index: number) => {
+      const paramType = functionDetail.inputs[index]?.type;
+      
+      // Handle array types
+      if (paramType && (paramType.endsWith('[]') || paramType.includes('['))) {
+        try {
+          // Parse JSON string to array
+          return JSON.parse(arg);
+        } catch (e) {
+          console.error(`Error parsing array argument: ${arg}`);
+          throw new Error(`Could not parse argument ${index+1} as array. Please provide a valid JSON array.`);
+        }
+      }
+      
+      // Handle bytes32 type (ensure proper length)
+      if (paramType === 'bytes32' && arg.startsWith('0x') && arg.length < 66) {
+        // Pad to full bytes32 length
+        return arg.padEnd(66, '0');
+      }
+      
+      return arg;
+    });
 
     // Validate options for write functions
     if (!isViewFunction) {
