@@ -33,8 +33,7 @@ function loadProtocolConfig(): EveryConfig {
   const configLocations = [
     path.resolve(process.cwd(), ".every.toml"),
     path.resolve(os.homedir(), ".every.toml"),
-    // ai! this should be a dir of the package root, not the cwd
-    path.resolve(process.cwd(), "node_modules/every-cli/.every.toml"),
+    path.resolve(__dirname, "../.every.toml"),
   ];
 
   // Process TOML config files
