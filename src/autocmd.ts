@@ -3,8 +3,8 @@ import fs from "fs";
 import path from "path";
 import { createPublicClient, http, parseAbi, getContract, type PublicClient, type Address } from "viem";
 import dotenv from "dotenv";
-
-// ai! use .every.toml as the primary config file, the package will provides a default one, but user can overrite it with files in their home dirs
+import { parse as parseTOML } from "@iarna/toml";
+import os from "os";
 /**
  * Represents a function from a contract ABI with its documentation
  */
@@ -131,7 +131,9 @@ export function generateCommandFromDetail(command: Command, functionDetail: Cont
   const isViewFunction = functionDetail.stateMutability === "view" || functionDetail.stateMutability === "pure";
 
   // Add universe option for all functions
-  leafCommand.option("-u, --universe <universe>", "Universe URL or name");
+  const universes = loadUniverseConfigs();
+  const defaultUniverse = universes.size > 0 ? Array.from(universes.keys())[0] : undefined;
+  leafCommand.option("-u, --universe <universe>", "Universe URL or name", defaultUniverse);
 
   // Add additional options for write functions
   if (!isViewFunction) {
@@ -187,7 +189,21 @@ interface UniverseConfig {
 }
 
 /**
- * Load universe configurations from config file or environment
+ * Interface for the complete configuration
+ */
+interface EveryConfig {
+  general: {
+    defaultUniverse: string;
+  };
+  universes: Record<string, {
+    name: string;
+    rpc_url: string;
+    contracts: Record<string, string>;
+  }>;
+}
+
+/**
+ * Load universe configurations from config files and environment
  * @returns Map of universe configurations
  */
 function loadUniverseConfigs(): Map<string, UniverseConfig> {
@@ -195,23 +211,100 @@ function loadUniverseConfigs(): Map<string, UniverseConfig> {
   dotenv.config();
 
   const configs = new Map<string, UniverseConfig>();
+  let configData: EveryConfig | null = null;
 
-  // Try to load from config file
-  try {
-    const configPath = path.resolve(process.cwd(), "config.json");
+  // Define possible config file locations in order of precedence
+  const configLocations = [
+    path.resolve(process.cwd(), '.every.toml'),                // Current directory
+    path.resolve(os.homedir(), '.every.toml'),                 // User's home directory
+    path.resolve(process.cwd(), 'node_modules/every-cli/.every.toml') // Package default
+  ];
+
+  // Try to load from config files in order of precedence
+  for (const configPath of configLocations) {
     if (fs.existsSync(configPath)) {
-      const configData = JSON.parse(fs.readFileSync(configPath, "utf8"));
-
-      // Process each universe in the config
-      for (const [name, config] of Object.entries(configData.universes || {})) {
-        configs.set(name, config as UniverseConfig);
+      try {
+        const configContent = fs.readFileSync(configPath, 'utf8');
+        const parsedConfig = parseTOML(configContent) as any;
+        
+        // If we already have a config, merge this one into it
+        if (configData) {
+          // Merge universes
+          if (parsedConfig.universes) {
+            configData.universes = {
+              ...configData.universes,
+              ...parsedConfig.universes
+            };
+          }
+          
+          // Override general settings
+          if (parsedConfig.general) {
+            configData.general = {
+              ...configData.general,
+              ...parsedConfig.general
+            };
+          }
+        } else {
+          // First config found, use it as base
+          configData = {
+            general: {
+              defaultUniverse: parsedConfig.general?.default_universe || 'mainnet'
+            },
+            universes: parsedConfig.universes || {}
+          };
+        }
+        
+        console.log(`Loaded configuration from ${configPath}`);
+      } catch (error) {
+        console.warn(`Failed to load ${configPath}:`, error);
       }
+    }
+  }
+
+  // Also try to load from legacy config.json for backward compatibility
+  try {
+    const jsonConfigPath = path.resolve(process.cwd(), "config.json");
+    if (fs.existsSync(jsonConfigPath)) {
+      const jsonConfig = JSON.parse(fs.readFileSync(jsonConfigPath, "utf8"));
+      
+      // If we don't have a config yet, create one
+      if (!configData) {
+        configData = {
+          general: { defaultUniverse: 'mainnet' },
+          universes: {}
+        };
+      }
+      
+      // Add universes from JSON config
+      if (jsonConfig.universes) {
+        for (const [name, universe] of Object.entries(jsonConfig.universes)) {
+          const u = universe as any;
+          configData.universes[name] = {
+            name: u.name,
+            rpc_url: u.rpcUrl,
+            contracts: u.contracts || {}
+          };
+        }
+      }
+      
+      console.log(`Loaded configuration from ${jsonConfigPath}`);
     }
   } catch (error) {
     console.warn("Failed to load config.json:", error);
   }
 
-  // Add environment-based configuration if available
+  // Process the loaded configuration
+  if (configData && configData.universes) {
+    for (const [name, universe] of Object.entries(configData.universes)) {
+      configs.set(name, {
+        name: universe.name,
+        rpcUrl: universe.rpc_url,
+        contracts: universe.contracts || {}
+      });
+    }
+  }
+
+  // Add environment-based configuration if available (highest precedence)
   const envUniverseName = process.env.UNIVERSE_NAME;
   const envRpcUrl = process.env.RPC_URL;
 
@@ -231,6 +324,12 @@ function loadUniverseConfigs(): Map<string, UniverseConfig> {
       rpcUrl: envRpcUrl,
       contracts,
     });
+    
+    console.log(`Added environment-based configuration for universe "${envUniverseName}"`);
+  }
+
+  if (configs.size === 0) {
+    console.warn("No universe configurations found. Please create a .every.toml file.");
   }
 
   return configs;
