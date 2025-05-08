@@ -59,7 +59,7 @@ export function loadUniverseConfigs(): Map<string, UniverseConfig> {
           // First config found, use it as base
           configData = {
             general: {
-              defaultUniverse: parsedConfig.general?.default_universe || "mainnet",
+              default_universe: parsedConfig.general?.default_universe || "mainnet",
             },
             universes: parsedConfig.universes || {},
           };
@@ -81,7 +81,7 @@ export function loadUniverseConfigs(): Map<string, UniverseConfig> {
       // If we don't have a config yet, create one
       if (!configData) {
         configData = {
-          general: { defaultUniverse: "mainnet" },
+          general: { default_universe: "mainnet" },
           universes: {},
         };
       }

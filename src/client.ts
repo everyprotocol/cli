@@ -11,7 +11,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import fs from "fs";
 import path from "path";
 import { loadUniverseConfigs } from "./config";
-import type { ContractFunctionDetail } from "./autocmd";
+import type { ContractFunctionDetail } from "./types";
 
 /**
  * Get a public client for the specified universe

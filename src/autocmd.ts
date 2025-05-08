@@ -12,38 +12,7 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import dotenv from "dotenv";
-import type { UniverseConfig } from "./types";
-/**
- * Represents a function from a contract ABI with its documentation
- */
-export interface ContractFunctionDetail {
-  /** Original ABI function object */
-  abiFunction: any;
-  /** Function name */
-  name: string;
-  /** Function signature (name + param types) */
-  signature: string;
-  /** Function inputs */
-  inputs: Array<{
-    name: string;
-    type: string;
-    description: string;
-  }>;
-  /** Function outputs */
-  outputs: Array<{
-    name: string;
-    type: string;
-    description: string;
-  }>;
-  /** Function state mutability (view, pure, nonpayable, payable) */
-  stateMutability: string;
-  /** User-friendly description of the function */
-  description: string;
-  /** Contract name this function belongs to */
-  contractName: string;
-  /** Command path segments for nested commands */
-  commandPath: string[];
-}
+import type { UniverseConfig, ContractFunctionDetail } from "./types";
 
 /**
  * Processes an ABI and extracts detailed function information

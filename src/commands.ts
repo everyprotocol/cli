@@ -1,8 +1,8 @@
 import { Command } from "commander";
 import path from "path";
 import fs from "fs";
-import { processAbi, generateCommandFromDetail, type ContractFunctionDetail } from "./autocmd";
-import { type CommandConfig } from "./types";
+import { processAbi, generateCommandFromDetail } from "./autocmd";
+import { type CommandConfig, type ContractFunctionDetail } from "./types";
 
 /**
  * Configures a level 1 subcommand with filtered functions from an ABI file
