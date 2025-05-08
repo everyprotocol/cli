@@ -395,12 +395,19 @@ async function callFunction(functionDetail: ContractFunctionDetail, args: any[],
     .toLowerCase() // Convert to lowercase
     .replace(/^_/, ""); // Remove leading underscore if present
 
-  const contractAddress = universe.contracts[contractKey] || universe.contracts[functionDetail.contractName];
-  if (!contractAddress) {
+  const rawContractAddress = universe.contracts[contractKey] || universe.contracts[functionDetail.contractName];
+  if (!rawContractAddress) {
     throw new Error(
       `Contract "${functionDetail.contractName}" (key: ${contractKey}) not found in universe "${universeName}"`
     );
   }
+  
+  // Ensure the address is properly formatted as a hex string
+  const contractAddress = typeof rawContractAddress === 'string' 
+    ? rawContractAddress.startsWith('0x') 
+      ? rawContractAddress 
+      : `0x${rawContractAddress}`
+    : `0x${rawContractAddress.toString(16)}`;
 
   // Create public client
   const publicClient = getPublicClient(universeName);
@@ -415,13 +422,13 @@ async function callFunction(functionDetail: ContractFunctionDetail, args: any[],
   try {
     console.log({ args, options, contractKey, contractAddress, sig: functionDetail.signature });
     // Call the function directly using publicClient.readContract
-    // const result = await publicClient.readContract({
-    //   address: contractAddress as Address,
-    //   abi: parseAbi([`function ${functionDetail.signature}`]),
-    //   functionName: functionDetail.name,
-    //   args: args as any[],
-    // });
-    // return result;
+    const result = await publicClient.readContract({
+      address: contractAddress as Address,
+      abi: parseAbi([`function ${functionDetail.signature}`]),
+      functionName: functionDetail.name,
+      args: args as any[],
+    });
+    return result;
   } catch (error) {
     console.error(`Error calling ${functionDetail.name}:`, error);
     throw error;
