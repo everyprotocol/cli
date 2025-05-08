@@ -423,9 +423,13 @@ async function callFunction(functionDetail: ContractFunctionDetail, args: any[],
   try {
     console.log({ args, options, contractKey, contractAddress, sig: functionDetail.signature });
     // Call the function directly using publicClient.readContract
+    // Create a complete function signature including return types
+    const returnTypes = functionDetail.outputs.map(output => output.type).join(',');
+    const fullSignature = `function ${functionDetail.signature} returns (${returnTypes})`;
+    
     const result = await publicClient.readContract({
       address: contractAddress as Address,
-      abi: parseAbi([`function ${functionDetail.signature}`]), // ai! the return signature not included
+      abi: parseAbi([fullSignature]),
       functionName: functionDetail.name,
       args: args as any[],
     });
