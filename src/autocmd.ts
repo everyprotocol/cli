@@ -1,8 +1,8 @@
-import { Command, type OptionValues } from "commander";
+import { Command, InvalidArgumentError, type OptionValues } from "commander";
 import fs from "fs";
 import path from "path";
-import { toFunctionSignature } from "viem";
-import { SolidityAddress } from "abitype";
+import { BaseError, ContractFunctionRevertedError, encodeAbiParameters, toFunctionSignature } from "viem";
+import { formatAbiParameter, InvalidParameterError, SolidityAddress } from "abitype";
 import JSON5 from "json5";
 import type { ContractFunction, UniverseConfig, CommandConfig } from "./types";
 import { getWalletClient, getPublicClient, getContractAddress } from "./client";
@@ -35,6 +35,7 @@ export function configureSubCommand(program: Command, config: CommandConfig): Co
   }
 }
 
+// ai! extend this function to include errors and events, and if merge userdoc/devdoc as well if applicable
 export function extractFunctions(abi: any): ContractFunction[] {
   return abi.abi
     .filter((item: any) => item.type === "function")
@@ -78,59 +79,17 @@ export function generateFunctionCommand(
 
 function preprocessArgs(raw: any[], func: ContractFunction): any[] {
   return raw.map((arg, index) => {
-    const paramType = func.inputs[index]?.type;
-    
-    // Handle array types
-    if (paramType && (paramType.endsWith("[]") || paramType.includes("["))) {
-      try {
-        return JSON.parse(arg);
-      } catch (e) {
-        console.error(`Error parsing array argument: ${arg}`);
-        throw new Error(`Could not parse argument ${index + 1} as array. Please provide a valid JSON array.`);
-      }
-    }
-    
-    // Handle address type (treat as bytes20)
-    if (paramType === "address") {
-      if (!arg.startsWith("0x")) {
-        return `0x${arg.padEnd(40, "0")}`;
-      }
-      return arg.padEnd(42, "0").toLowerCase();
-    }
-    
-    // Handle bytes and bytesN types
-    if (paramType === "bytes" || /^bytes\d+$/.test(paramType)) {
-      if (!arg.startsWith("0x")) {
-        return `0x${arg}`;
-      }
-      
-      // For fixed-length bytes types, ensure correct length
-      if (paramType !== "bytes") {
-        const byteLength = parseInt(paramType.replace("bytes", ""));
-        const expectedHexLength = byteLength * 2 + 2; // +2 for "0x" prefix
-        
-        if (arg.length < expectedHexLength) {
-          return arg.padEnd(expectedHexLength, "0");
-        }
-      }
-      
-      return arg;
-    }
-    
-    // Handle string type - keep as is
-    if (paramType === "string") {
-      return arg;
-    }
-    
-    // For other types, try to parse with JSON5
+    const paramInfo = func.inputs[index];
+    const t = paramInfo?.type;
+    const arg2 = t === "address" || t.startsWith("bytes") || t === "string" ? arg : JSON5.parse(arg);
     try {
-      // Import JSON5 at the top of the file
-      const JSON5 = require("json5");
-      return JSON5.parse(arg);
-    } catch (e) {
-      // If parsing fails, return the original value
-      return arg;
+      // console.log(arg2);
+      encodeAbiParameters([paramInfo], [arg2]);
+    } catch (e: any) {
+      console.log(formatAbiParameter(paramInfo));
+      throw new Error(`invalid param ${paramInfo.name}(${paramInfo.internalType}): ${e.message}`);
     }
+    return arg2;
   });
 }
 
@@ -143,19 +102,29 @@ function writeAction(func: ContractFunction, contractName: string): (this: Comma
     const walletClient = getWalletClient(config, opts);
     const contractAddress = getContractAddress(config, contractName, args);
     console.log({ contractAddress, args, opts, config });
-
-    const { request } = await publicClient.simulateContract({
-      address: contractAddress,
-      abi: [func],
-      functionName: func.name,
-      args: args as any[],
-      account: walletClient.account,
-    });
-    const hash = await walletClient.writeContract(request);
-    console.log(`Transaction sent: ${hash}`);
-    console.log("Waiting for transaction to be mined...");
-    const receipt = await publicClient.waitForTransactionReceipt({ hash });
-    console.log("Transaction mined:", receipt);
+    try {
+      const { request } = await publicClient.simulateContract({
+        address: contractAddress,
+        abi: [func],
+        functionName: func.name,
+        args: args as any[],
+        account: walletClient.account,
+      });
+      const hash = await walletClient.writeContract(request);
+      console.log(`Transaction sent: ${hash}`);
+      console.log("Waiting for transaction to be mined...");
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      console.log("Transaction mined:", receipt);
+    } catch (err: any) {
+      if (err instanceof BaseError) {
+        const revertError = err.walk((err) => err instanceof ContractFunctionRevertedError);
+        console.log(revertError);
+        if (revertError instanceof ContractFunctionRevertedError) {
+          const errorName = revertError.data?.errorName ?? "";
+          // do something with `errorName`
+        }
+      }
+    }
   };
 }
 
