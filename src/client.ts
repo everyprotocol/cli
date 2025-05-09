@@ -3,6 +3,7 @@ import path from "path";
 import os from "os";
 import { createPublicClient, http, createWalletClient, type PublicClient, type WalletClient, type Address } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { Wallet } from "ethers";
 import type { UniverseConfig } from "./types";
 import { OptionValues } from "commander";
 import promptSync from "prompt-sync";
@@ -15,14 +16,13 @@ export function getPublicClient(config: UniverseConfig): PublicClient {
   });
 }
 
-export function getWalletClient(config: UniverseConfig, options: OptionValues): WalletClient {
+export async function getWalletClient(config: UniverseConfig, options: OptionValues): Promise<WalletClient> {
   let account;
 
   if (options.privateKey) {
     const privateKey = options.privateKey.startsWith("0x") ? options.privateKey : `0x${options.privateKey}`;
     account = privateKeyToAccount(privateKey as `0x${string}`);
   } else if (options.account) {
-    // ai! use ethers to load json keystore
     const keystorePath = path.join(os.homedir(), ".every", "keystores", options.account);
     if (!fs.existsSync(keystorePath)) {
       throw new Error(`Keystore file not found: ${keystorePath}`);
@@ -43,8 +43,9 @@ export function getWalletClient(config: UniverseConfig, options: OptionValues): 
     }
 
     try {
-      const privateKey = decryptKeystore(keystore, password);
-      account = privateKeyToAccount(privateKey as `0x${string}`);
+      // Use ethers to decrypt the keystore
+      const wallet = await Wallet.fromEncryptedJson(JSON.stringify(keystore), password);
+      account = privateKeyToAccount(wallet.privateKey as `0x${string}`);
     } catch (error: any) {
       throw new Error(`Failed to decrypt keystore: ${error.message}`);
     }
@@ -58,22 +59,6 @@ export function getWalletClient(config: UniverseConfig, options: OptionValues): 
   });
 }
 
-// Placeholder decryption logic — replace with real library
-function decryptKeystore(keystore: any, password: string): string {
-  if (!keystore.crypto) {
-    return keystore.privateKey;
-  }
-
-  if (!password) {
-    throw new Error("Password required to decrypt keystore");
-  }
-
-  if (keystore.crypto.kdf === "scrypt" || keystore.crypto.kdf === "pbkdf2") {
-    return keystore.privateKey || "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
-  }
-
-  throw new Error(`Unsupported keystore format`);
-}
 
 export function getContractAddress(config: UniverseConfig, contract: string, args: any[]): Address {
   const contractKey = contract
