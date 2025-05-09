@@ -594,11 +594,7 @@ if (parsedType) {
  * @param valueStr The string representation of the value to parse
  * @returns The parsed value, or undefined if parsing failed
  */
-export function parseValue(
-  registry: Map<string, AbiTypeInfo>,
-  typeName: string,
-  valueStr: string
-): any {
+export function parseValue(registry: Map<string, AbiTypeInfo>, typeName: string, valueStr: string): any {
   // Get the type information from the registry
   const typeInfo = parseTypeString(typeName, registry);
   if (!typeInfo) {
@@ -610,7 +606,7 @@ export function parseValue(
   switch (typeInfo.kind) {
     case "native":
       return parseNativeValue(typeInfo.abiType, valueStr);
-    
+
     case "struct":
       // Handle both object notation and tuple notation
       if (valueStr.startsWith("{") && valueStr.endsWith("}")) {
@@ -621,7 +617,7 @@ export function parseValue(
         console.warn(`Invalid struct value format: ${valueStr}`);
         return undefined;
       }
-    
+
     case "enum":
       // For enums, we expect either a number or a string value
       if (/^\d+$/.test(valueStr)) {
@@ -631,7 +627,7 @@ export function parseValue(
         // Since we don't have enum values in the ABI, we'll just return the string
         return valueStr;
       }
-    
+
     case "tuple":
       // For tuples, we expect a parenthesized list of values
       if (valueStr.startsWith("(") && valueStr.endsWith(")")) {
@@ -640,7 +636,7 @@ export function parseValue(
         console.warn(`Invalid tuple value format: ${valueStr}`);
         return undefined;
       }
-    
+
     default:
       console.warn(`Unsupported type kind: ${typeInfo.kind}`);
       return undefined;
@@ -721,14 +717,14 @@ function parseStructObjectNotation(typeInfo: AbiTypeInfo, valueStr: string): any
     return {}; // Empty object
   }
 
-  const fieldPairs = content.split(",").map(pair => pair.trim());
+  const fieldPairs = content.split(",").map((pair) => pair.trim());
   const result: any = {};
 
   for (const pair of fieldPairs) {
-    const [fieldName, fieldValueStr] = pair.split("=").map(part => part.trim());
-    
+    const [fieldName, fieldValueStr] = pair.split("=").map((part) => part.trim());
+
     // Find the component with this field name
-    const component = typeInfo.components.find(comp => comp.name === fieldName);
+    const component = typeInfo.components.find((comp) => comp.name === fieldName);
     if (!component) {
       console.warn(`Unknown field in struct ${typeInfo.name}: ${fieldName}`);
       continue;
@@ -784,13 +780,13 @@ function parseTupleNotation(typeInfo: AbiTypeInfo, valueStr: string): any[] | un
 
   // Split the content by commas, respecting nested structures
   const valueStrs = splitTupleValues(content);
-  
+
   // Parse each value based on its corresponding component type
   const result: any[] = [];
   for (let i = 0; i < Math.min(valueStrs.length, typeInfo.components.length); i++) {
     const component = typeInfo.components[i];
     const componentValueStr = valueStrs[i].trim();
-    
+
     // Parse the component value
     const componentValue = parseValue(new Map([[component.name, component]]), component.name, componentValueStr);
     result.push(componentValue);
@@ -809,7 +805,7 @@ function splitTupleValues(content: string): string[] {
 
   for (let i = 0; i < content.length; i++) {
     const char = content[i];
-    
+
     if ((char === "," || char === ";") && depth === 0) {
       // Found a top-level separator
       result.push(currentValue.trim());
@@ -817,7 +813,7 @@ function splitTupleValues(content: string): string[] {
     } else {
       // Add the character to the current value
       currentValue += char;
-      
+
       // Track nesting depth
       if (char === "(" || char === "{" || char === "[") {
         depth++;
@@ -826,12 +822,12 @@ function splitTupleValues(content: string): string[] {
       }
     }
   }
-  
+
   // Add the last value
   if (currentValue.trim()) {
     result.push(currentValue.trim());
   }
-  
+
   return result;
 }
 
@@ -846,5 +842,6 @@ const structValue = parseValue(typeRegistry, "Descriptor", "{field1=123, field2=
 console.log("Parsed struct (object notation):", structValue);
 
 // Parse a struct using tuple notation
+// ai! no matter what form is used as input, always generate a full formed type, throw error if filed missing
 const tupleValue = parseValue(typeRegistry, "Descriptor", "(123, 0x1234)");
 console.log("Parsed struct (tuple notation):", tupleValue);
