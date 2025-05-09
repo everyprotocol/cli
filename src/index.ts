@@ -10,9 +10,10 @@ await main();
 
 async function main() {
   // Read version from package.json
+  // ai! this will not work if it's installed, coz we usually dont invoke the cmd under that dir
   const packageJsonPath = path.resolve(process.cwd(), "package.json");
   const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
-  
+
   const program = new Command()
     .name("every-cli")
     .description("CLI for interacting with Every Protocol contracts")
