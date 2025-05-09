@@ -142,19 +142,19 @@ function isNativeType(type: string): boolean {
  */
 function mapUserDefinedToNativeTypes(abiDir: string = path.resolve(process.cwd(), "abis")): Record<string, string> {
   const typeMapping: Record<string, string> = {};
-  
+
   if (!fs.existsSync(abiDir)) {
     return typeMapping;
   }
-  
+
   const files = fs.readdirSync(abiDir).filter((file) => file.endsWith(".json"));
-  
+
   for (const file of files) {
     try {
       const abiPath = path.join(abiDir, file);
       const abiContent = fs.readFileSync(abiPath, "utf8");
       const abi = JSON.parse(abiContent);
-      
+
       // Process structs and custom types
       for (const item of abi.abi || []) {
         // Look for struct definitions
@@ -173,7 +173,7 @@ function mapUserDefinedToNativeTypes(abiDir: string = path.resolve(process.cwd()
                 typeMapping[cleanType] = param.type;
               }
             }
-            
+
             // Check components for nested structs
             if (param.components) {
               for (const component of param.components) {
@@ -195,7 +195,7 @@ function mapUserDefinedToNativeTypes(abiDir: string = path.resolve(process.cwd()
       console.warn(`Error processing ABI file ${file} for type mapping:`, error);
     }
   }
-  
+
   return typeMapping;
 }
 
@@ -210,3 +210,5 @@ console.log("User-defined types with corresponding native types:");
 for (const [userType, nativeType] of Object.entries(typeMapping)) {
   console.log(`  ${userType} => ${nativeType}`);
 }
+
+// ai! keep more info, struct/enum/usertype, and their fileds
