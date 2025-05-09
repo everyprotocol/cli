@@ -17,13 +17,13 @@ export function configureSubCommand(program: Command, config: CommandConfig): Co
     const abi = JSON.parse(abiContent);
     const contractName = path.basename(abiFile, path.extname(abiFile));
 
-    // Extract functions, errors, and events separately
+    // Extract functions, errors, and events
     const functions = abi.abi
       .filter((item: any) => item.type === "function")
       .map((item: any) => ({ ...item, _type: "function" }));
 
-    const errors = extractErrors(abi);
-    const events = extractEvents(abi);
+    // Extract errors and events in one pass
+    const { errors, events } = extractErrorsAndEvents(abi);
 
     // Combine all items for complete ABI information
     const allItems = [...functions, ...errors, ...events];
@@ -56,78 +56,68 @@ export function configureSubCommand(program: Command, config: CommandConfig): Co
   }
 }
 
-// ai! extract errors and events in one pass and together, since they are most likely be extracted from a implement contract instead of an interface.
-
 /**
- * Extract errors from an ABI
+ * Extract errors and events from an ABI in one pass
  * @param abi The ABI object
- * @returns Array of error definitions
+ * @returns Object containing arrays of error and event definitions
  */
-export function extractErrors(abi: any): ContractFunction[] {
-  return abi.abi
-    .filter((item: any) => item.type === "error")
-    .map((item: any) => {
-      const signature = `${item.name}(${(item.inputs || []).map((i: any) => i.type).join(",")})`;
-
-      // Handle case where metadata might not exist or have expected structure
-      const metadata = abi.metadata?.output || { userdoc: { errors: {} }, devdoc: { errors: {} } };
-      const userdoc = metadata.userdoc?.errors?.[signature] || {};
-      const devdoc = metadata.devdoc?.errors?.[signature] || {};
-
-      // Merge documentation with priority to userdoc
-      const mergedDocs = {
-        signature,
-        ...devdoc,
-        ...userdoc,
-        params: {
-          ...(devdoc.params || {}),
-          ...(userdoc.params || {}),
-        },
-      };
-
-      // Only include params if they exist
-      if (Object.keys(mergedDocs.params).length === 0) {
-        delete mergedDocs.params;
+export function extractErrorsAndEvents(abi: any): { errors: ContractFunction[], events: ContractFunction[] } {
+  const errors: ContractFunction[] = [];
+  const events: ContractFunction[] = [];
+  
+  // Process both errors and events in a single pass
+  for (const item of abi.abi || []) {
+    if (item.type !== "error" && item.type !== "event") continue;
+    
+    const signature = `${item.name}(${(item.inputs || []).map((i: any) => i.type).join(",")})`;
+    
+    // Handle case where metadata might not exist or have expected structure
+    const metadata = abi.metadata?.output || { 
+      userdoc: { errors: {}, events: {} }, 
+      devdoc: { errors: {}, events: {} } 
+    };
+    
+    // Get documentation based on item type
+    const docType = item.type === "error" ? "errors" : "events";
+    const userdoc = metadata.userdoc?.[docType]?.[signature] || {};
+    const devdoc = metadata.devdoc?.[docType]?.[signature] || {};
+    
+    // Merge documentation with priority to userdoc
+    const mergedDocs = {
+      signature,
+      ...devdoc,
+      ...userdoc,
+      params: {
+        ...(devdoc.params || {}),
+        ...(userdoc.params || {})
       }
-
-      return { ...item, _metadata: mergedDocs } as ContractFunction;
-    });
+    };
+    
+    // Only include params if they exist
+    if (Object.keys(mergedDocs.params || {}).length === 0) {
+      delete mergedDocs.params;
+    }
+    
+    const processedItem = { ...item, _metadata: mergedDocs } as ContractFunction;
+    
+    // Add to appropriate collection
+    if (item.type === "error") {
+      errors.push(processedItem);
+    } else {
+      events.push(processedItem);
+    }
+  }
+  
+  return { errors, events };
 }
 
-/**
- * Extract events from an ABI
- * @param abi The ABI object
- * @returns Array of event definitions
- */
+// Backward compatibility functions
+export function extractErrors(abi: any): ContractFunction[] {
+  return extractErrorsAndEvents(abi).errors;
+}
+
 export function extractEvents(abi: any): ContractFunction[] {
-  return abi.abi
-    .filter((item: any) => item.type === "event")
-    .map((item: any) => {
-      const signature = `${item.name}(${(item.inputs || []).map((i: any) => i.type).join(",")})`;
-
-      // Handle case where metadata might not exist or have expected structure
-      const metadata = abi.metadata?.output || { userdoc: { events: {} }, devdoc: { events: {} } };
-      const userdoc = metadata.userdoc?.events?.[signature] || {};
-      const devdoc = metadata.devdoc?.events?.[signature] || {};
-
-      // Merge documentation with priority to userdoc
-      const mergedDocs = {
-        signature,
-        ...devdoc,
-        ...userdoc,
-        params: {
-          ...(devdoc.params || {}),
-          ...(userdoc.params || {}),
-        },
-      };
-
-      // Only include params if they exist
-      if (Object.keys(mergedDocs.params).length === 0) {
-        delete mergedDocs.params;
-      }
-
-      return { ...item, _metadata: mergedDocs } as ContractFunction;
-    });
+  return extractErrorsAndEvents(abi).events;
 }
 
 export function extractFunctions(abi: any): ContractFunction[] {
