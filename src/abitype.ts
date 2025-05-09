@@ -386,7 +386,9 @@ function parseNativeValue(abiType: string, valueStr: string): any {
       if (!Array.isArray(parsed)) {
         throw new Error(`Expected array value for type ${abiType}, got: ${valueStr}`);
       }
-      return parsed;
+      // Process each element in the array according to the base type
+      const baseType = abiType.replace(/\[\d*\]/g, "");
+      return parsed.map(item => parseNativeValue(baseType, item.toString()));
     } catch (error) {
       throw new Error(`Failed to parse array value for type ${abiType}: ${valueStr}. ${error.message}`);
     }
@@ -394,19 +396,26 @@ function parseNativeValue(abiType: string, valueStr: string): any {
 
   // Handle different native types
   if (abiType.startsWith("uint") || abiType.startsWith("int")) {
-    // For integers, parse as BigInt if possible
+    // For integers, parse as number or BigInt depending on size
     try {
-      return BigInt(valueStr);
+      const bitSize = parseInt(abiType.replace(/^(u)?int/, "")) || 256;
+      // Use regular number for small integers, BigInt for larger ones
+      if (bitSize <= 53) {
+        return parseInt(valueStr, 10);
+      } else {
+        return BigInt(valueStr);
+      }
     } catch (error) {
       throw new Error(`Failed to parse integer value for type ${abiType}: ${valueStr}. ${error.message}`);
     }
   } else if (abiType === "address") {
-    // For addresses, validate format
-    if (/^0x[0-9a-fA-F]{40}$/.test(valueStr)) {
-      return valueStr;
+    // For addresses, validate format and ensure correct length
+    if (/^0x[0-9a-fA-F]{1,40}$/.test(valueStr)) {
+      // Pad to full length if needed
+      return valueStr.padEnd(42, "0").toLowerCase();
     } else {
       throw new Error(
-        `Invalid address format for type ${abiType}: ${valueStr}. Expected 0x followed by 40 hex characters.`
+        `Invalid address format for type ${abiType}: ${valueStr}. Expected 0x followed by hex characters.`
       );
     }
   } else if (abiType === "bool") {
@@ -422,8 +431,26 @@ function parseNativeValue(abiType: string, valueStr: string): any {
     // For strings, return as is
     return valueStr;
   } else if (abiType.startsWith("bytes")) {
-    // For bytes, validate hex format
-    if (/^0x[0-9a-fA-F]*$/.test(valueStr)) {
+    // For fixed-length bytes, ensure correct length
+    if (abiType !== "bytes") {
+      const byteLength = parseInt(abiType.replace("bytes", ""));
+      const expectedHexLength = byteLength * 2 + 2; // +2 for "0x" prefix
+      
+      if (/^0x[0-9a-fA-F]*$/.test(valueStr)) {
+        // Pad or truncate to correct length
+        if (valueStr.length < expectedHexLength) {
+          return valueStr.padEnd(expectedHexLength, "0");
+        } else if (valueStr.length > expectedHexLength) {
+          console.warn(`Warning: Truncating bytes value to match ${abiType} length`);
+          return valueStr.substring(0, expectedHexLength);
+        }
+        return valueStr;
+      } else {
+        throw new Error(`Invalid bytes format for type ${abiType}: ${valueStr}. Expected 0x followed by hex characters.`);
+      }
+    } 
+    // For dynamic bytes, just validate format
+    else if (/^0x[0-9a-fA-F]*$/.test(valueStr)) {
       return valueStr;
     } else {
       throw new Error(`Invalid bytes format for type ${abiType}: ${valueStr}. Expected 0x followed by hex characters.`);
@@ -566,12 +593,30 @@ function parseTupleNotation(typeInfo: AbiTypeInfo, valueStr: string): any[] | un
     }
 
     // Parse the component value
-    const componentValue = parseValue(new Map([[component.name, component]]), component.name, componentValueStr);
-    if (componentValue === undefined) {
-      throw new Error(`Failed to parse value for component ${i} (${component.name}) in tuple ${typeInfo.name}`);
+    try {
+      const componentValue = parseValue(new Map([[component.name, component]]), component.name, componentValueStr);
+      if (componentValue === undefined) {
+        throw new Error(`Failed to parse value for component ${i} (${component.name}) in tuple ${typeInfo.name}`);
+      }
+      result.push(componentValue);
+    } catch (error) {
+      // Try direct parsing if component-based parsing fails
+      if (component.type && (component.type.startsWith("uint") || component.type.startsWith("int"))) {
+        try {
+          const bitSize = parseInt(component.type.replace(/^(u)?int/, "")) || 256;
+          result.push(bitSize <= 53 ? parseInt(componentValueStr, 10) : BigInt(componentValueStr));
+          continue;
+        } catch (e) {
+          // Fall through to the error
+        }
+      } else if (component.type && component.type.startsWith("bytes")) {
+        if (/^0x[0-9a-fA-F]*$/.test(componentValueStr)) {
+          result.push(componentValueStr);
+          continue;
+        }
+      }
+      throw error;
     }
-
-    result.push(componentValue);
   }
 
   return result;
