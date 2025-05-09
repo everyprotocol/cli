@@ -55,13 +55,13 @@ export function extractDistinctTypes(abiDir: string = path.resolve(process.cwd()
             }
           }
         }
-    
+
         // Also check for custom types in the ABI
         if (item.type === "error" || item.type === "struct") {
           userDefinedTypes.add(item.name);
         }
       }
-  
+
       // Also look for types in the contract interfaces section if available
       if (abi.contractName) {
         userDefinedTypes.add(abi.contractName);
@@ -97,15 +97,15 @@ export function extractDistinctTypes(abiDir: string = path.resolve(process.cwd()
  */
 function isNativeType(type: string): boolean {
   // Check if it's a native type using regex patterns
-  if (/^(u?int\d*|address|bool|bytes\d*|string|tuple|function)$/.test(type)) {
+  if (/^(u?int\d*|address|bool|bytes\d*|string|function)$/.test(type)) {
     return true;
   }
-  
+
   // Special case for bytes (without number)
   if (type === "bytes") {
     return true;
   }
-  
+
   return false;
 }
 
@@ -113,3 +113,22 @@ function isNativeType(type: string): boolean {
 const types = extractDistinctTypes();
 console.log("Native types:", types.nativeTypes);
 console.log("User-defined types:", types.userDefinedTypes);
+
+// ai! user defined type has a property "type", and also an internal type
+//   "outputs": [
+// {
+//   "name": "id",
+//   "type": "uint64",
+//   "internalType": "uint64"
+// },
+// {
+//   "name": "desc",
+//   "type": "tuple",
+//   "internalType": "struct Descriptor",
+//   "components": [
+//     {
+//       "name": "traits",
+//       "type": "uint32",
+//       "internalType": "uint32"
+//     },
+//     {
