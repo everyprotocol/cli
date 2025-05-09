@@ -146,8 +146,59 @@ function writeContract(
     const receipt = await publicClient.waitForTransactionReceipt({ hash });
     console.log("Transaction mined:", receipt);
 
-    // ai! show events and return values
+    // Parse and display events from the transaction receipt
+    if (receipt.logs && receipt.logs.length > 0) {
+      console.log("\nEvents emitted:");
+      for (const log of receipt.logs) {
+        try {
+          const event = publicClient.decodeEventLog({
+            abi: [func, ...nonFuncAbiItems],
+            data: log.data,
+            topics: log.topics,
+          });
+          
+          if (event) {
+            console.log(`- ${event.eventName}`);
+            for (const [key, value] of Object.entries(event.args)) {
+              if (isNaN(Number(key))) { // Skip numeric keys (array indices)
+                console.log(`  ${key}: ${formatValue(value)}`);
+              }
+            }
+          }
+        } catch (error) {
+          // Skip logs that can't be decoded with our ABI
+          continue;
+        }
+      }
+    } else {
+      console.log("\nNo events emitted");
+    }
+
+    // For functions that return values, we would need to decode the return data
+    // This is typically not available in transaction receipts
+    // For non-view functions, return values are usually communicated via events
   };
+}
+
+// Helper function to format values for display
+function formatValue(value: any): string {
+  if (value === null || value === undefined) {
+    return 'null';
+  }
+  
+  if (typeof value === 'bigint') {
+    return value.toString();
+  }
+  
+  if (Array.isArray(value)) {
+    return `[${value.map(formatValue).join(', ')}]`;
+  }
+  
+  if (typeof value === 'object') {
+    return JSON.stringify(value);
+  }
+  
+  return String(value);
 }
 
 function readContract(
