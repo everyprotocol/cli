@@ -598,14 +598,17 @@ export function parseValue(registry: Map<string, AbiTypeInfo>, typeName: string,
   // Get the type information from the registry
   const typeInfo = parseTypeString(typeName, registry);
   if (!typeInfo) {
-    console.warn(`Unknown type: ${typeName}`);
-    return undefined;
+    throw new Error(`Unknown type: ${typeName}`);
   }
 
   // Handle different kinds of types
   switch (typeInfo.kind) {
     case "native":
-      return parseNativeValue(typeInfo.abiType, valueStr);
+      const nativeValue = parseNativeValue(typeInfo.abiType, valueStr);
+      if (nativeValue === undefined) {
+        throw new Error(`Failed to parse native value for type ${typeName}: ${valueStr}`);
+      }
+      return nativeValue;
 
     case "struct":
       // Handle both object notation and tuple notation
@@ -614,32 +617,35 @@ export function parseValue(registry: Map<string, AbiTypeInfo>, typeName: string,
       } else if (valueStr.startsWith("(") && valueStr.endsWith(")")) {
         return parseStructTupleNotation(typeInfo, valueStr);
       } else {
-        console.warn(`Invalid struct value format: ${valueStr}`);
-        return undefined;
+        throw new Error(`Invalid struct value format for ${typeName}: ${valueStr}. Expected object notation {field=value} or tuple notation (value1,value2)`);
       }
 
     case "enum":
       // For enums, we expect either a number or a string value
       if (/^\d+$/.test(valueStr)) {
         return parseInt(valueStr, 10);
-      } else {
+      } else if (valueStr) {
         // If it's a string value, we would need the enum definition to map it to a number
         // Since we don't have enum values in the ABI, we'll just return the string
         return valueStr;
+      } else {
+        throw new Error(`Invalid enum value for ${typeName}: ${valueStr}`);
       }
 
     case "tuple":
       // For tuples, we expect a parenthesized list of values
       if (valueStr.startsWith("(") && valueStr.endsWith(")")) {
-        return parseTupleNotation(typeInfo, valueStr);
+        const result = parseTupleNotation(typeInfo, valueStr);
+        if (!result) {
+          throw new Error(`Failed to parse tuple value for ${typeName}: ${valueStr}`);
+        }
+        return result;
       } else {
-        console.warn(`Invalid tuple value format: ${valueStr}`);
-        return undefined;
+        throw new Error(`Invalid tuple value format for ${typeName}: ${valueStr}. Expected tuple notation (value1,value2)`);
       }
 
     default:
-      console.warn(`Unsupported type kind: ${typeInfo.kind}`);
-      return undefined;
+      throw new Error(`Unsupported type kind: ${typeInfo.kind}`);
   }
 }
 
@@ -651,10 +657,13 @@ function parseNativeValue(abiType: string, valueStr: string): any {
   if (abiType.includes("[")) {
     // For arrays, we expect a JSON array
     try {
-      return JSON.parse(valueStr);
+      const parsed = JSON.parse(valueStr);
+      if (!Array.isArray(parsed)) {
+        throw new Error(`Expected array value for type ${abiType}, got: ${valueStr}`);
+      }
+      return parsed;
     } catch (error) {
-      console.warn(`Failed to parse array value: ${valueStr}`);
-      return undefined;
+      throw new Error(`Failed to parse array value for type ${abiType}: ${valueStr}. ${error.message}`);
     }
   }
 
@@ -664,16 +673,14 @@ function parseNativeValue(abiType: string, valueStr: string): any {
     try {
       return BigInt(valueStr);
     } catch (error) {
-      console.warn(`Failed to parse integer value: ${valueStr}`);
-      return undefined;
+      throw new Error(`Failed to parse integer value for type ${abiType}: ${valueStr}. ${error.message}`);
     }
   } else if (abiType === "address") {
     // For addresses, validate format
     if (/^0x[0-9a-fA-F]{40}$/.test(valueStr)) {
       return valueStr;
     } else {
-      console.warn(`Invalid address format: ${valueStr}`);
-      return undefined;
+      throw new Error(`Invalid address format for type ${abiType}: ${valueStr}. Expected 0x followed by 40 hex characters.`);
     }
   } else if (abiType === "bool") {
     // For booleans, accept true/false or 0/1
@@ -682,8 +689,7 @@ function parseNativeValue(abiType: string, valueStr: string): any {
     } else if (valueStr.toLowerCase() === "false" || valueStr === "0") {
       return false;
     } else {
-      console.warn(`Invalid boolean value: ${valueStr}`);
-      return undefined;
+      throw new Error(`Invalid boolean value for type ${abiType}: ${valueStr}. Expected true/false or 1/0.`);
     }
   } else if (abiType === "string") {
     // For strings, return as is
@@ -693,12 +699,10 @@ function parseNativeValue(abiType: string, valueStr: string): any {
     if (/^0x[0-9a-fA-F]*$/.test(valueStr)) {
       return valueStr;
     } else {
-      console.warn(`Invalid bytes format: ${valueStr}`);
-      return undefined;
+      throw new Error(`Invalid bytes format for type ${abiType}: ${valueStr}. Expected 0x followed by hex characters.`);
     }
   } else {
-    console.warn(`Unsupported native type: ${abiType}`);
-    return undefined;
+    throw new Error(`Unsupported native type: ${abiType}`);
   }
 }
 
@@ -707,31 +711,43 @@ function parseNativeValue(abiType: string, valueStr: string): any {
  */
 function parseStructObjectNotation(typeInfo: AbiTypeInfo, valueStr: string): any {
   if (!typeInfo.components) {
-    console.warn(`No component information available for struct: ${typeInfo.name}`);
-    return undefined;
+    throw new Error(`No component information available for struct: ${typeInfo.name}`);
   }
 
   // Remove the curly braces and split by commas
   const content = valueStr.substring(1, valueStr.length - 1).trim();
-  if (!content) {
-    return {}; // Empty object
+  if (!content && typeInfo.components.length > 0) {
+    throw new Error(`Empty object provided for struct ${typeInfo.name} which requires ${typeInfo.components.length} fields`);
   }
 
   const fieldPairs = content.split(",").map((pair) => pair.trim());
   const result: any = {};
+  const providedFields = new Set<string>();
 
   for (const pair of fieldPairs) {
     const [fieldName, fieldValueStr] = pair.split("=").map((part) => part.trim());
+    providedFields.add(fieldName);
 
     // Find the component with this field name
     const component = typeInfo.components.find((comp) => comp.name === fieldName);
     if (!component) {
-      console.warn(`Unknown field in struct ${typeInfo.name}: ${fieldName}`);
-      continue;
+      throw new Error(`Unknown field in struct ${typeInfo.name}: ${fieldName}`);
     }
 
     // Parse the field value based on its type
-    result[fieldName] = parseValue(new Map([[component.name, component]]), component.name, fieldValueStr);
+    const parsedValue = parseValue(new Map([[component.name, component]]), component.name, fieldValueStr);
+    if (parsedValue === undefined) {
+      throw new Error(`Failed to parse value for field '${fieldName}' in struct ${typeInfo.name}`);
+    }
+    
+    result[fieldName] = parsedValue;
+  }
+
+  // Check if all required fields are provided
+  for (const component of typeInfo.components) {
+    if (!providedFields.has(component.name)) {
+      throw new Error(`Missing required field '${component.name}' in struct ${typeInfo.name}`);
+    }
   }
 
   return result;
@@ -742,14 +758,20 @@ function parseStructObjectNotation(typeInfo: AbiTypeInfo, valueStr: string): any
  */
 function parseStructTupleNotation(typeInfo: AbiTypeInfo, valueStr: string): any {
   if (!typeInfo.components) {
-    console.warn(`No component information available for struct: ${typeInfo.name}`);
-    return undefined;
+    throw new Error(`No component information available for struct: ${typeInfo.name}`);
   }
 
   // Parse as a tuple and then convert to an object
   const tupleValues = parseTupleNotation(typeInfo, valueStr);
   if (!tupleValues) {
-    return undefined;
+    throw new Error(`Failed to parse tuple values for struct: ${typeInfo.name}`);
+  }
+
+  // Check if we have all required fields
+  if (tupleValues.length < typeInfo.components.length) {
+    throw new Error(
+      `Missing fields for struct ${typeInfo.name}. Expected ${typeInfo.components.length} values, got ${tupleValues.length}`
+    );
   }
 
   // Convert the array of values to an object with field names
@@ -757,6 +779,8 @@ function parseStructTupleNotation(typeInfo: AbiTypeInfo, valueStr: string): any 
   typeInfo.components.forEach((component, index) => {
     if (index < tupleValues.length) {
       result[component.name] = tupleValues[index];
+    } else {
+      throw new Error(`Missing value for field '${component.name}' in struct ${typeInfo.name}`);
     }
   });
 
@@ -768,27 +792,41 @@ function parseStructTupleNotation(typeInfo: AbiTypeInfo, valueStr: string): any 
  */
 function parseTupleNotation(typeInfo: AbiTypeInfo, valueStr: string): any[] | undefined {
   if (!typeInfo.components) {
-    console.warn(`No component information available for tuple: ${typeInfo.name}`);
-    return undefined;
+    throw new Error(`No component information available for tuple: ${typeInfo.name}`);
   }
 
   // Remove the parentheses
   const content = valueStr.substring(1, valueStr.length - 1).trim();
-  if (!content) {
-    return []; // Empty tuple
+  if (!content && typeInfo.components.length > 0) {
+    throw new Error(`Empty tuple provided for type ${typeInfo.name} which requires ${typeInfo.components.length} values`);
   }
 
   // Split the content by commas, respecting nested structures
   const valueStrs = splitTupleValues(content);
 
+  // Check if we have enough values
+  if (valueStrs.length < typeInfo.components.length) {
+    throw new Error(
+      `Not enough values for tuple ${typeInfo.name}. Expected ${typeInfo.components.length}, got ${valueStrs.length}`
+    );
+  }
+
   // Parse each value based on its corresponding component type
   const result: any[] = [];
-  for (let i = 0; i < Math.min(valueStrs.length, typeInfo.components.length); i++) {
+  for (let i = 0; i < typeInfo.components.length; i++) {
     const component = typeInfo.components[i];
-    const componentValueStr = valueStrs[i].trim();
+    const componentValueStr = i < valueStrs.length ? valueStrs[i].trim() : "";
+
+    if (!componentValueStr) {
+      throw new Error(`Missing value for component ${i} (${component.name}) in tuple ${typeInfo.name}`);
+    }
 
     // Parse the component value
     const componentValue = parseValue(new Map([[component.name, component]]), component.name, componentValueStr);
+    if (componentValue === undefined) {
+      throw new Error(`Failed to parse value for component ${i} (${component.name}) in tuple ${typeInfo.name}`);
+    }
+    
     result.push(componentValue);
   }
 
@@ -842,6 +880,5 @@ const structValue = parseValue(typeRegistry, "Descriptor", "{field1=123, field2=
 console.log("Parsed struct (object notation):", structValue);
 
 // Parse a struct using tuple notation
-// ai! no matter what form is used as input, always generate a full formed type, throw error if filed missing
 const tupleValue = parseValue(typeRegistry, "Descriptor", "(123, 0x1234)");
 console.log("Parsed struct (tuple notation):", tupleValue);
