@@ -587,7 +587,264 @@ if (parsedType) {
   console.log("Parsed type:", parsedType);
 }
 
-// ai! write a function to support
-//   1. parseValue(typeRegistry, 'address', '0x1234')
-//   2. parseValue(typeRegistry, 'Descriptor', '{field=1, field=abc}') # the json object form
-//   2. parseValue(typeRegistry, 'Descriptor', '()') # the tuple form
+/**
+ * Parse a string value into the appropriate JavaScript value based on the type
+ * @param registry The type registry to use for type lookups
+ * @param typeName The name of the type to parse the value as
+ * @param valueStr The string representation of the value to parse
+ * @returns The parsed value, or undefined if parsing failed
+ */
+export function parseValue(
+  registry: Map<string, AbiTypeInfo>,
+  typeName: string,
+  valueStr: string
+): any {
+  // Get the type information from the registry
+  const typeInfo = parseTypeString(typeName, registry);
+  if (!typeInfo) {
+    console.warn(`Unknown type: ${typeName}`);
+    return undefined;
+  }
+
+  // Handle different kinds of types
+  switch (typeInfo.kind) {
+    case "native":
+      return parseNativeValue(typeInfo.abiType, valueStr);
+    
+    case "struct":
+      // Handle both object notation and tuple notation
+      if (valueStr.startsWith("{") && valueStr.endsWith("}")) {
+        return parseStructObjectNotation(typeInfo, valueStr);
+      } else if (valueStr.startsWith("(") && valueStr.endsWith(")")) {
+        return parseStructTupleNotation(typeInfo, valueStr);
+      } else {
+        console.warn(`Invalid struct value format: ${valueStr}`);
+        return undefined;
+      }
+    
+    case "enum":
+      // For enums, we expect either a number or a string value
+      if (/^\d+$/.test(valueStr)) {
+        return parseInt(valueStr, 10);
+      } else {
+        // If it's a string value, we would need the enum definition to map it to a number
+        // Since we don't have enum values in the ABI, we'll just return the string
+        return valueStr;
+      }
+    
+    case "tuple":
+      // For tuples, we expect a parenthesized list of values
+      if (valueStr.startsWith("(") && valueStr.endsWith(")")) {
+        return parseTupleNotation(typeInfo, valueStr);
+      } else {
+        console.warn(`Invalid tuple value format: ${valueStr}`);
+        return undefined;
+      }
+    
+    default:
+      console.warn(`Unsupported type kind: ${typeInfo.kind}`);
+      return undefined;
+  }
+}
+
+/**
+ * Parse a native Solidity type value
+ */
+function parseNativeValue(abiType: string, valueStr: string): any {
+  // Handle array types
+  if (abiType.includes("[")) {
+    // For arrays, we expect a JSON array
+    try {
+      return JSON.parse(valueStr);
+    } catch (error) {
+      console.warn(`Failed to parse array value: ${valueStr}`);
+      return undefined;
+    }
+  }
+
+  // Handle different native types
+  if (abiType.startsWith("uint") || abiType.startsWith("int")) {
+    // For integers, parse as BigInt if possible
+    try {
+      return BigInt(valueStr);
+    } catch (error) {
+      console.warn(`Failed to parse integer value: ${valueStr}`);
+      return undefined;
+    }
+  } else if (abiType === "address") {
+    // For addresses, validate format
+    if (/^0x[0-9a-fA-F]{40}$/.test(valueStr)) {
+      return valueStr;
+    } else {
+      console.warn(`Invalid address format: ${valueStr}`);
+      return undefined;
+    }
+  } else if (abiType === "bool") {
+    // For booleans, accept true/false or 0/1
+    if (valueStr.toLowerCase() === "true" || valueStr === "1") {
+      return true;
+    } else if (valueStr.toLowerCase() === "false" || valueStr === "0") {
+      return false;
+    } else {
+      console.warn(`Invalid boolean value: ${valueStr}`);
+      return undefined;
+    }
+  } else if (abiType === "string") {
+    // For strings, return as is
+    return valueStr;
+  } else if (abiType.startsWith("bytes")) {
+    // For bytes, validate hex format
+    if (/^0x[0-9a-fA-F]*$/.test(valueStr)) {
+      return valueStr;
+    } else {
+      console.warn(`Invalid bytes format: ${valueStr}`);
+      return undefined;
+    }
+  } else {
+    console.warn(`Unsupported native type: ${abiType}`);
+    return undefined;
+  }
+}
+
+/**
+ * Parse a struct value in object notation (e.g., "{field1=value1, field2=value2}")
+ */
+function parseStructObjectNotation(typeInfo: AbiTypeInfo, valueStr: string): any {
+  if (!typeInfo.components) {
+    console.warn(`No component information available for struct: ${typeInfo.name}`);
+    return undefined;
+  }
+
+  // Remove the curly braces and split by commas
+  const content = valueStr.substring(1, valueStr.length - 1).trim();
+  if (!content) {
+    return {}; // Empty object
+  }
+
+  const fieldPairs = content.split(",").map(pair => pair.trim());
+  const result: any = {};
+
+  for (const pair of fieldPairs) {
+    const [fieldName, fieldValueStr] = pair.split("=").map(part => part.trim());
+    
+    // Find the component with this field name
+    const component = typeInfo.components.find(comp => comp.name === fieldName);
+    if (!component) {
+      console.warn(`Unknown field in struct ${typeInfo.name}: ${fieldName}`);
+      continue;
+    }
+
+    // Parse the field value based on its type
+    result[fieldName] = parseValue(new Map([[component.name, component]]), component.name, fieldValueStr);
+  }
+
+  return result;
+}
+
+/**
+ * Parse a struct value in tuple notation (e.g., "(value1, value2)")
+ */
+function parseStructTupleNotation(typeInfo: AbiTypeInfo, valueStr: string): any {
+  if (!typeInfo.components) {
+    console.warn(`No component information available for struct: ${typeInfo.name}`);
+    return undefined;
+  }
+
+  // Parse as a tuple and then convert to an object
+  const tupleValues = parseTupleNotation(typeInfo, valueStr);
+  if (!tupleValues) {
+    return undefined;
+  }
+
+  // Convert the array of values to an object with field names
+  const result: any = {};
+  typeInfo.components.forEach((component, index) => {
+    if (index < tupleValues.length) {
+      result[component.name] = tupleValues[index];
+    }
+  });
+
+  return result;
+}
+
+/**
+ * Parse a tuple value (e.g., "(value1, value2)")
+ */
+function parseTupleNotation(typeInfo: AbiTypeInfo, valueStr: string): any[] | undefined {
+  if (!typeInfo.components) {
+    console.warn(`No component information available for tuple: ${typeInfo.name}`);
+    return undefined;
+  }
+
+  // Remove the parentheses
+  const content = valueStr.substring(1, valueStr.length - 1).trim();
+  if (!content) {
+    return []; // Empty tuple
+  }
+
+  // Split the content by commas, respecting nested structures
+  const valueStrs = splitTupleValues(content);
+  
+  // Parse each value based on its corresponding component type
+  const result: any[] = [];
+  for (let i = 0; i < Math.min(valueStrs.length, typeInfo.components.length); i++) {
+    const component = typeInfo.components[i];
+    const componentValueStr = valueStrs[i].trim();
+    
+    // Parse the component value
+    const componentValue = parseValue(new Map([[component.name, component]]), component.name, componentValueStr);
+    result.push(componentValue);
+  }
+
+  return result;
+}
+
+/**
+ * Split a tuple content string into individual value strings, respecting nested structures
+ */
+function splitTupleValues(content: string): string[] {
+  const result: string[] = [];
+  let currentValue = "";
+  let depth = 0;
+
+  for (let i = 0; i < content.length; i++) {
+    const char = content[i];
+    
+    if ((char === "," || char === ";") && depth === 0) {
+      // Found a top-level separator
+      result.push(currentValue.trim());
+      currentValue = "";
+    } else {
+      // Add the character to the current value
+      currentValue += char;
+      
+      // Track nesting depth
+      if (char === "(" || char === "{" || char === "[") {
+        depth++;
+      } else if (char === ")" || char === "}" || char === "]") {
+        depth--;
+      }
+    }
+  }
+  
+  // Add the last value
+  if (currentValue.trim()) {
+    result.push(currentValue.trim());
+  }
+  
+  return result;
+}
+
+// Example usage:
+// Parse an address
+const addressValue = parseValue(typeRegistry, "address", "0x1234567890123456789012345678901234567890");
+console.log("Parsed address:", addressValue);
+
+// Parse a struct using object notation
+// Assuming we have a struct type "Descriptor" in the registry
+const structValue = parseValue(typeRegistry, "Descriptor", "{field1=123, field2=0x1234}");
+console.log("Parsed struct (object notation):", structValue);
+
+// Parse a struct using tuple notation
+const tupleValue = parseValue(typeRegistry, "Descriptor", "(123, 0x1234)");
+console.log("Parsed struct (tuple notation):", tupleValue);
