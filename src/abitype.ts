@@ -99,12 +99,27 @@ function processTypeDefinition(
       }
     }
 
+    // Make sure we preserve the original component names from the ABI
+    const namedComponents = param.components.map((component: any, index: number) => {
+      // Use the component from our registry but preserve the original name
+      const processedComponent = components[index] || { 
+        name: component.name,
+        type: component.type,
+        internalType: component.internalType,
+        kind: "native"
+      };
+      
+      // Ensure the name is preserved
+      processedComponent.name = component.name;
+      return processedComponent;
+    });
+    
     registry.set(structName, {
       name: structName,
       type: "tuple",
       internalType: `struct ${structName}`,
       kind: "struct",
-      components,
+      components: namedComponents,
       sourceContract: contractName,
       sourceFile: file,
     });

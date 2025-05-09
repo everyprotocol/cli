@@ -68,7 +68,7 @@ program
     if (typeInfo.components && typeInfo.components.length > 0) {
       console.log("\nComponents:");
       typeInfo.components.forEach((comp, i) => {
-        console.log(`  ${i+1}. ${comp.name}: ${comp.abiType}`);
+        console.log(`  ${i+1}. ${comp.name}: ${comp.type}`);
       });
     }
     
