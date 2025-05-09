@@ -166,7 +166,7 @@ function mapUserDefinedToNativeTypes(abiDir: string = path.resolve(process.cwd()
             processParameter(param, contractName, file);
           }
         }
-        
+
         // Process errors and events
         if (item.type === "error" || item.type === "event") {
           for (const param of item.inputs || []) {
@@ -186,7 +186,7 @@ function mapUserDefinedToNativeTypes(abiDir: string = path.resolve(process.cwd()
     // Process struct types
     if (param.internalType?.startsWith("struct ") && param.type === "tuple" && param.components) {
       const structName = param.internalType.substring(7);
-      
+
       // If we haven't seen this struct before or have more complete info now
       if (!typeInfo[structName] || !typeInfo[structName].fields) {
         typeInfo[structName] = {
@@ -197,11 +197,11 @@ function mapUserDefinedToNativeTypes(abiDir: string = path.resolve(process.cwd()
           fields: param.components.map((comp: any) => ({
             name: comp.name,
             type: comp.type,
-            internalType: comp.internalType
-          }))
+            internalType: comp.internalType,
+          })),
         };
       }
-      
+
       // Process nested structs in components
       for (const component of param.components) {
         processParameter(component, contractName, file);
@@ -210,7 +210,7 @@ function mapUserDefinedToNativeTypes(abiDir: string = path.resolve(process.cwd()
     // Process enum types
     else if (param.internalType?.startsWith("enum ")) {
       const enumName = param.internalType.substring(5);
-      
+
       if (!typeInfo[enumName]) {
         typeInfo[enumName] = {
           kind: "enum",
@@ -218,37 +218,42 @@ function mapUserDefinedToNativeTypes(abiDir: string = path.resolve(process.cwd()
           sourceContract: contractName,
           sourceFile: file,
           // We can't get enum values from ABI directly
-          values: []
+          values: [],
         };
       }
     }
     // Process contract types
     else if (param.internalType?.startsWith("contract ")) {
       const contractTypeName = param.internalType.substring(9);
-      
+
       if (!typeInfo[contractTypeName]) {
         typeInfo[contractTypeName] = {
           kind: "contract",
           nativeType: param.type,
           sourceContract: contractName,
-          sourceFile: file
+          sourceFile: file,
         };
       }
     }
     // Other user-defined types
-    else if (param.internalType && param.type && param.internalType !== param.type && !isNativeType(param.internalType)) {
+    else if (
+      param.internalType &&
+      param.type &&
+      param.internalType !== param.type &&
+      !isNativeType(param.internalType)
+    ) {
       const cleanType = param.internalType.replace(/^(contract|enum|struct) /, "");
-      
+
       if (!typeInfo[cleanType]) {
         typeInfo[cleanType] = {
           kind: "userType",
           nativeType: param.type,
           sourceContract: contractName,
-          sourceFile: file
+          sourceFile: file,
         };
       }
     }
-    
+
     // Process components if this is a tuple
     if (param.components) {
       for (const component of param.components) {
@@ -272,17 +277,32 @@ for (const [typeName, info] of Object.entries(typeInfo)) {
   console.log(`\n${typeName} (${info.kind}):`);
   console.log(`  Native type: ${info.nativeType}`);
   console.log(`  Source: ${info.sourceContract} (${info.sourceFile})`);
-  
+
   // Print fields for structs
   if (info.kind === "struct" && info.fields) {
     console.log("  Fields:");
     for (const field of info.fields) {
-      console.log(`    ${field.name}: ${field.type}${field.internalType !== field.type ? ` (${field.internalType})` : ''}`);
+      console.log(
+        `    ${field.name}: ${field.type}${field.internalType !== field.type ? ` (${field.internalType})` : ""}`
+      );
     }
   }
-  
+
   // Print values for enums if available
   if (info.kind === "enum" && info.values && info.values.length > 0) {
     console.log("  Values:", info.values.join(", "));
   }
 }
+
+// native: address, string, uintNN
+// struct
+// enum
+// tuple
+//
+// type = 'native' | 'struct' | 'enum' | 'tuple'
+// name = address, string for native type, enum name or struct name, if tuple : '(comma separated names of sub types)'
+
+// ai! write functions:
+// 1. define a type to store infomation about an abi type, including name, type, and its abi type(raw format stored in json). type = 'native' | 'struct' | 'enum' | 'tuple', name = address, string for native type, enum name or struct name, if tuple : '(comma separated names of sub types)'
+// 2. write function to extract all types from abi files
+// 3. write a function to parse a string as a type, the type is specified using the name we just discussed.
