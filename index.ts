@@ -617,7 +617,9 @@ export function parseValue(registry: Map<string, AbiTypeInfo>, typeName: string,
       } else if (valueStr.startsWith("(") && valueStr.endsWith(")")) {
         return parseStructTupleNotation(typeInfo, valueStr);
       } else {
-        throw new Error(`Invalid struct value format for ${typeName}: ${valueStr}. Expected object notation {field=value} or tuple notation (value1,value2)`);
+        throw new Error(
+          `Invalid struct value format for ${typeName}: ${valueStr}. Expected object notation {field=value} or tuple notation (value1,value2)`
+        );
       }
 
     case "enum":
@@ -641,7 +643,9 @@ export function parseValue(registry: Map<string, AbiTypeInfo>, typeName: string,
         }
         return result;
       } else {
-        throw new Error(`Invalid tuple value format for ${typeName}: ${valueStr}. Expected tuple notation (value1,value2)`);
+        throw new Error(
+          `Invalid tuple value format for ${typeName}: ${valueStr}. Expected tuple notation (value1,value2)`
+        );
       }
 
     default:
@@ -680,7 +684,9 @@ function parseNativeValue(abiType: string, valueStr: string): any {
     if (/^0x[0-9a-fA-F]{40}$/.test(valueStr)) {
       return valueStr;
     } else {
-      throw new Error(`Invalid address format for type ${abiType}: ${valueStr}. Expected 0x followed by 40 hex characters.`);
+      throw new Error(
+        `Invalid address format for type ${abiType}: ${valueStr}. Expected 0x followed by 40 hex characters.`
+      );
     }
   } else if (abiType === "bool") {
     // For booleans, accept true/false or 0/1
@@ -717,7 +723,9 @@ function parseStructObjectNotation(typeInfo: AbiTypeInfo, valueStr: string): any
   // Remove the curly braces and split by commas
   const content = valueStr.substring(1, valueStr.length - 1).trim();
   if (!content && typeInfo.components.length > 0) {
-    throw new Error(`Empty object provided for struct ${typeInfo.name} which requires ${typeInfo.components.length} fields`);
+    throw new Error(
+      `Empty object provided for struct ${typeInfo.name} which requires ${typeInfo.components.length} fields`
+    );
   }
 
   const fieldPairs = content.split(",").map((pair) => pair.trim());
@@ -739,7 +747,7 @@ function parseStructObjectNotation(typeInfo: AbiTypeInfo, valueStr: string): any
     if (parsedValue === undefined) {
       throw new Error(`Failed to parse value for field '${fieldName}' in struct ${typeInfo.name}`);
     }
-    
+
     result[fieldName] = parsedValue;
   }
 
@@ -798,7 +806,9 @@ function parseTupleNotation(typeInfo: AbiTypeInfo, valueStr: string): any[] | un
   // Remove the parentheses
   const content = valueStr.substring(1, valueStr.length - 1).trim();
   if (!content && typeInfo.components.length > 0) {
-    throw new Error(`Empty tuple provided for type ${typeInfo.name} which requires ${typeInfo.components.length} values`);
+    throw new Error(
+      `Empty tuple provided for type ${typeInfo.name} which requires ${typeInfo.components.length} values`
+    );
   }
 
   // Split the content by commas, respecting nested structures
@@ -826,7 +836,7 @@ function parseTupleNotation(typeInfo: AbiTypeInfo, valueStr: string): any[] | un
     if (componentValue === undefined) {
       throw new Error(`Failed to parse value for component ${i} (${component.name}) in tuple ${typeInfo.name}`);
     }
-    
+
     result.push(componentValue);
   }
 
@@ -882,3 +892,13 @@ console.log("Parsed struct (object notation):", structValue);
 // Parse a struct using tuple notation
 const tupleValue = parseValue(typeRegistry, "Descriptor", "(123, 0x1234)");
 console.log("Parsed struct (tuple notation):", tupleValue);
+
+// ai! refactor:
+// 1. make code concise, into several exportable functions, that can be easily used elsewhere
+// 2. write a small cli with sub commands:
+//    abitype list
+//    abitype info Descriptor
+//    abitype info address
+//    abitype parse address '0x1234'
+//    abitype parse Descriptor '(1,2,'abc')'
+//    abitype parse Descriptor # show examples about how to input values of this type

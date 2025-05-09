@@ -6,7 +6,7 @@
     "every": "./dist/index.js"
   },
   "scripts": {
-    "build": "bun build ./src/index.ts --outdir dist --target node",
+    "build": "bun build src/*.ts --outdir dist --target node",
     "clean": "rm -rf dist",
     "start": "bun src/index.ts",
     "dev": "bun --watch src/index.ts",
@@ -21,7 +21,8 @@
   "dependencies": {
     "@iarna/toml": "^2.2.5",
     "commander": "^13.1.0",
-    "dotenv": "^16.3.1",
-    "viem": "^2.7.8"
+    "prompt-sync": "^4.2.0",
+    "viem": "^2.29.1",
+    "zod": "^3.24.4"
   }
 }
