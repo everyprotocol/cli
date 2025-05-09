@@ -3,15 +3,20 @@
 import { Command } from "commander";
 import { defineSubCommands } from "./autocmd";
 import { CommandConfig, ContractFunction } from "./types";
+import fs from "fs";
+import path from "path";
 
 await main();
 
-// ai! read version from package.json
 async function main() {
+  // Read version from package.json
+  const packageJsonPath = path.resolve(process.cwd(), "package.json");
+  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+  
   const program = new Command()
     .name("every-cli")
     .description("CLI for interacting with Every Protocol contracts")
-    .version("0.1.0");
+    .version(packageJson.version);
 
   const commandConfigs: CommandConfig[] = [
     { name: "kind", intfAbi: "IKindRegistry", implAbi: "KindRegistry", rename: lstrip("kind") },
