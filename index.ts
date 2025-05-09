@@ -93,11 +93,11 @@ export function extractDistinctTypes(abiDir: string = path.resolve(process.cwd()
   // Helper function to extract user-defined types from internalType
   function processInternalType(internalType: string) {
     if (!internalType) return;
-    
+
     // Extract struct names from internalType (e.g., "struct Descriptor" -> "Descriptor")
     if (internalType.startsWith("struct ")) {
       userDefinedTypes.add(internalType.substring(7));
-    } 
+    }
     // Extract enum names
     else if (internalType.startsWith("enum ")) {
       userDefinedTypes.add(internalType.substring(5));
@@ -139,3 +139,5 @@ function isNativeType(type: string): boolean {
 const types = extractDistinctTypes();
 console.log("Native types:", types.nativeTypes);
 console.log("User-defined types:", types.userDefinedTypes);
+
+//ai! also output there corresponding native types
