@@ -1,7 +1,7 @@
 import { Command } from "commander";
 import fs from "fs";
 import path from "path";
-import { encodeAbiParameters, toFunctionSignature } from "viem";
+import { encodeAbiParameters, toFunctionSignature, parseEventLogs } from "viem";
 import { formatAbiParameter } from "abitype";
 import JSON5 from "json5";
 import type { ContractFunction, UniverseConfig, CommandConfig } from "./types";
@@ -146,50 +146,27 @@ function writeContract(
     const receipt = await publicClient.waitForTransactionReceipt({ hash });
     console.log("Transaction mined:", receipt);
 
-    // ai! use viem utils e.g.,
-    // import { parseEventLogs } from 'viem'
-    // import { erc20Abi } from './abi'
-    // import { client } from './client'
-
-    // const receipt = await getTransactionReceipt(client, {
-    //   hash: '0xec23b2ba4bc59ba61554507c1b1bc91649e6586eb2dd00c728e8ed0db8bb37ea',
-    // })
-
-    // const logs = parseEventLogs({
-    //   abi: erc20Abi,
-    //   logs: receipt.logs,
-    // })
-    // [
-    //   { args: { ... }, eventName: 'Transfer', logIndex: 3 ... },
-    //   { args: { ... }, eventName: 'Approval', logIndex: 5 ... },
-    //   ...
-    // ]
-    //
-    //
     // Parse and display events from the transaction receipt
     if (receipt.logs && receipt.logs.length > 0) {
       console.log("\nEvents emitted:");
-      for (const log of receipt.logs) {
-        try {
-          const event = publicClient.decodeEventLog({
-            abi: [func, ...nonFuncAbiItems],
-            data: log.data,
-            topics: log.topics,
-          });
-
-          if (event) {
-            console.log(`- ${event.eventName}`);
-            for (const [key, value] of Object.entries(event.args)) {
-              if (isNaN(Number(key))) {
-                // Skip numeric keys (array indices)
-                console.log(`  ${key}: ${formatValue(value)}`);
-              }
+      
+      // Use viem's parseEventLogs utility for better event handling
+      const parsedLogs = parseEventLogs({
+        abi: [func, ...nonFuncAbiItems],
+        logs: receipt.logs,
+      });
+      
+      if (parsedLogs.length > 0) {
+        for (const log of parsedLogs) {
+          console.log(`- ${log.eventName}`);
+          for (const [key, value] of Object.entries(log.args)) {
+            if (isNaN(Number(key))) { // Skip numeric keys (array indices)
+              console.log(`  ${key}: ${formatValue(value)}`);
             }
           }
-        } catch (error) {
-          // Skip logs that can't be decoded with our ABI
-          continue;
         }
+      } else {
+        console.log("  No events could be decoded with the current ABI");
       }
     } else {
       console.log("\nNo events emitted");
