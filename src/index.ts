@@ -1,58 +1,63 @@
 #!/usr/bin/env bun
+
 import { Command } from "commander";
-import { configureSubCommand } from "./commands";
-import { CommandConfig } from "./types";
+import { defineSubCommands } from "./autocmd";
+import { CommandConfig, ContractFunction } from "./types";
 
-// Create the main program
-const program = new Command()
-  .name("every-cli")
-  .description("CLI for interacting with Every Protocol contracts")
-  .version("0.1.0");
+await main();
 
-// Define command configurations
-const commandConfigs: CommandConfig[] = [
-  {
-    name: "kind",
-    abiFile: "IKindRegistry.json",
-  },
-  {
-    name: "set",
-    abiFile: "ISetRegistry.json",
-  },
-  {
-    name: "relation",
-    abiFile: "IOmniRegistry.json",
-    filter: (func) => func.name.startsWith("relation"),
-  },
-  {
-    name: "mintpolicy",
-    abiFile: "IObjectMinter.json",
-  },
-  {
-    name: "object",
-    abiFile: "ISet.json",
-  },
-  {
-    name: "unique",
-    abiFile: "IElementRegistry.json",
-    filter: (func) => func.name.startsWith("unique"),
-  },
-  {
-    name: "value",
-    abiFile: "IElementRegistry.json",
-    filter: (func) => func.name.startsWith("value"),
-  },
-];
+// ai! read version from package.json
+async function main() {
+  const program = new Command()
+    .name("every-cli")
+    .description("CLI for interacting with Every Protocol contracts")
+    .version("0.1.0");
 
-// Configure all commands
-commandConfigs.forEach((config) => {
-  configureSubCommand(program, config);
-});
+  const commandConfigs: CommandConfig[] = [
+    { name: "kind", intfAbi: "IKindRegistry", implAbi: "KindRegistry", rename: lstrip("kind") },
+    { name: "set", intfAbi: "ISetRegistry", implAbi: "SetRegistry", rename: lstrip("set") },
+    {
+      name: "relation",
+      intfAbi: "IOmniRegistry",
+      implAbi: "OmniRegistry",
+      filter: startsWith("relation"),
+      rename: lstrip("relation"),
+    },
+    {
+      name: "unique",
+      intfAbi: "IElementRegistry",
+      implAbi: "ElementRegistry",
+      filter: startsWith("unique"),
+      rename: lstrip("unique"),
+    },
+    {
+      name: "value",
+      intfAbi: "IElementRegistry",
+      implAbi: "ElementRegistry",
+      filter: startsWith("value"),
+      rename: lstrip("value"),
+    },
+    { name: "mintpolicy", intfAbi: "IObjectMinter", implAbi: "ObjectMinter" },
+    { name: "object", intfAbi: "ISet" },
+  ];
 
-// Parse command line arguments
-program.parse();
+  commandConfigs.forEach((config) => defineSubCommands(program, config));
 
-// If no arguments provided, show help
-if (process.argv.length <= 2) {
-  program.help();
+  try {
+    await program.parseAsync();
+  } catch (e: any) {
+    console.error(e.message);
+  }
+}
+
+function lstrip(prefix: string): (name: string) => string {
+  return function (name: string) {
+    return name.substring(prefix.length).toLowerCase();
+  };
+}
+
+function startsWith(prefix: string): (func: ContractFunction) => boolean {
+  return function (func: ContractFunction) {
+    return func.name.startsWith(prefix);
+  };
 }
