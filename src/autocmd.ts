@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { toFunctionSignature } from "viem";
 import { SolidityAddress } from "abitype";
+import JSON5 from "json5";
 import type { ContractFunction, UniverseConfig, CommandConfig } from "./types";
 import { getWalletClient, getPublicClient, getContractAddress } from "./client";
 import { getUniverseConfig } from "./config";
@@ -75,14 +76,11 @@ export function generateFunctionCommand(
   return subCmd;
 }
 
-// ai! update this function
-// 1. if paramType == "address" treate it as bytes20
-// 2. if paramType is bytes or bytesN, it should start with 0x and with matched length
-// 3. if paramType == string, keep as it is
-// 4. else parse with json5
 function preprocessArgs(raw: any[], func: ContractFunction): any[] {
   return raw.map((arg, index) => {
     const paramType = func.inputs[index]?.type;
+    
+    // Handle array types
     if (paramType && (paramType.endsWith("[]") || paramType.includes("["))) {
       try {
         return JSON.parse(arg);
@@ -91,13 +89,48 @@ function preprocessArgs(raw: any[], func: ContractFunction): any[] {
         throw new Error(`Could not parse argument ${index + 1} as array. Please provide a valid JSON array.`);
       }
     }
-
-    // Handle bytes32 type
-    if (paramType === "bytes32" && arg.startsWith("0x") && arg.length < 66) {
-      return arg.padEnd(66, "0");
+    
+    // Handle address type (treat as bytes20)
+    if (paramType === "address") {
+      if (!arg.startsWith("0x")) {
+        return `0x${arg.padEnd(40, "0")}`;
+      }
+      return arg.padEnd(42, "0").toLowerCase();
     }
-
-    return arg;
+    
+    // Handle bytes and bytesN types
+    if (paramType === "bytes" || /^bytes\d+$/.test(paramType)) {
+      if (!arg.startsWith("0x")) {
+        return `0x${arg}`;
+      }
+      
+      // For fixed-length bytes types, ensure correct length
+      if (paramType !== "bytes") {
+        const byteLength = parseInt(paramType.replace("bytes", ""));
+        const expectedHexLength = byteLength * 2 + 2; // +2 for "0x" prefix
+        
+        if (arg.length < expectedHexLength) {
+          return arg.padEnd(expectedHexLength, "0");
+        }
+      }
+      
+      return arg;
+    }
+    
+    // Handle string type - keep as is
+    if (paramType === "string") {
+      return arg;
+    }
+    
+    // For other types, try to parse with JSON5
+    try {
+      // Import JSON5 at the top of the file
+      const JSON5 = require("json5");
+      return JSON5.parse(arg);
+    } catch (e) {
+      // If parsing fails, return the original value
+      return arg;
+    }
   });
 }
 
