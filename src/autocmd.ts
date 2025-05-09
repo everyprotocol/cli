@@ -16,11 +16,23 @@ export function configureSubCommand(program: Command, config: CommandConfig): Co
     const abiContent = fs.readFileSync(abiPath, "utf8");
     const abi = JSON.parse(abiContent);
     const contractName = path.basename(abiFile, path.extname(abiFile));
-    const functionDetails = extractFunctions(abi);
-    const filtered = filter ? functionDetails.filter(filter) : functionDetails;
+    
+    // Extract all functions, errors, and events
+    const allItems = extractFunctions(abi);
+    
+    // Filter to only include functions for CLI commands
+    const functionItems = allItems.filter(item => item.type === "function");
+    
+    // Apply custom filter if provided
+    const filtered = filter ? functionItems.filter(filter) : functionItems;
 
+    // Create the main command for this contract
     const level1Cmd = program.command(name).description(`${name} commands for ${contractName}`);
+    
+    // Track command names to handle duplicates
     const level2Cmds = new Map<string, number>();
+    
+    // Generate a command for each function
     filtered.forEach((func: ContractFunction) => {
       let funcName = rename ? rename(func.name) : func.name;
       let num: number = level2Cmds.get(funcName) || 0;
@@ -28,6 +40,7 @@ export function configureSubCommand(program: Command, config: CommandConfig): Co
       level2Cmds.set(funcName, num + 1);
       generateFunctionCommand(level1Cmd, level2CmdName, func, contractName);
     });
+    
     return program;
   } catch (error) {
     console.error(`Error configuring subcommand ${config.name} from ${config.abiFile}:`, error);
@@ -35,17 +48,52 @@ export function configureSubCommand(program: Command, config: CommandConfig): Co
   }
 }
 
-// ai! extend this function to include errors and events, and if merge userdoc/devdoc as well if applicable
 export function extractFunctions(abi: any): ContractFunction[] {
+  // Extract all functions, errors, and events
   return abi.abi
-    .filter((item: any) => item.type === "function")
-    .map((func: any) => {
-      const signature = toFunctionSignature(func);
+    .filter((item: any) => ["function", "error", "event"].includes(item.type))
+    .map((item: any) => {
+      // Generate signature for the item
+      const signature = item.type === "function" 
+        ? toFunctionSignature(item)
+        : `${item.name}(${(item.inputs || []).map((i: any) => i.type).join(',')})`;
+      
       // Handle case where metadata might not exist or have expected structure
-      const metadata = abi.metadata?.output || { userdoc: { methods: {} }, devdoc: { methods: {} } };
-      const userdoc = metadata.userdoc?.methods?.[signature] || {};
-      const devdoc = metadata.devdoc?.methods?.[signature] || {};
-      return { ...func, _metadata: { signature, ...userdoc, ...devdoc } } as ContractFunction;
+      const metadata = abi.metadata?.output || { userdoc: { methods: {}, events: {}, errors: {} }, devdoc: { methods: {}, events: {}, errors: {} } };
+      
+      // Get documentation based on item type
+      let userdoc = {};
+      let devdoc = {};
+      
+      if (item.type === "function") {
+        userdoc = metadata.userdoc?.methods?.[signature] || {};
+        devdoc = metadata.devdoc?.methods?.[signature] || {};
+      } else if (item.type === "event") {
+        userdoc = metadata.userdoc?.events?.[signature] || {};
+        devdoc = metadata.devdoc?.events?.[signature] || {};
+      } else if (item.type === "error") {
+        userdoc = metadata.userdoc?.errors?.[signature] || {};
+        devdoc = metadata.devdoc?.errors?.[signature] || {};
+      }
+      
+      // Merge documentation with priority to userdoc
+      const mergedDocs = {
+        signature,
+        ...devdoc,  // devdoc first (lower priority)
+        ...userdoc, // userdoc overrides (higher priority)
+        // Merge params from both sources if they exist
+        params: {
+          ...(devdoc.params || {}),
+          ...(userdoc.params || {})
+        }
+      };
+      
+      // Only include params if they exist
+      if (Object.keys(mergedDocs.params).length === 0) {
+        delete mergedDocs.params;
+      }
+      
+      return { ...item, _metadata: mergedDocs } as ContractFunction;
     });
 }
 
@@ -55,13 +103,24 @@ export function generateFunctionCommand(
   func: ContractFunction,
   contractName: string
 ): Command {
+  // Skip generating commands for errors and events
+  if (func.type !== "function") {
+    return cmd;
+  }
+  
+  // Use notice from metadata or generate a default description
   let desc = func._metadata?.notice || `Call ${func.name} function`;
   const subCmd = cmd.command(name).description(desc);
+  
+  // Add arguments for each input parameter
   func.inputs.forEach((input) => {
     const paramDesc = func._metadata?.params?.[input.name] || `${input.type} parameter`;
     subCmd.argument(`<${input.name}>`, paramDesc);
   });
+  
+  // Determine if this is a read-only function
   const isReadFunction = func.stateMutability === "view" || func.stateMutability === "pure";
+  
   if (isReadFunction) {
     subCmd.option("-u, --universe <universe>", "Universe name", "local").action(readAction(func, contractName));
   } else {
