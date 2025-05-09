@@ -1,287 +1,175 @@
-import { Command, InvalidArgumentError, type OptionValues } from "commander";
+import { Command } from "commander";
 import fs from "fs";
 import path from "path";
-import { BaseError, ContractFunctionRevertedError, encodeAbiParameters, toFunctionSignature } from "viem";
-import { formatAbiParameter, InvalidParameterError, SolidityAddress } from "abitype";
+import { encodeAbiParameters, toFunctionSignature } from "viem";
+import { formatAbiParameter } from "abitype";
 import JSON5 from "json5";
 import type { ContractFunction, UniverseConfig, CommandConfig } from "./types";
 import { getWalletClient, getPublicClient, getContractAddress } from "./client";
 import { getUniverseConfig } from "./config";
 
-export function configureSubCommand(program: Command, config: CommandConfig): Command {
+function loadAbi(name: string): any {
+  const abiPath = path.resolve(process.cwd(), "abis", `${name}.json`);
+  const abiContent = fs.readFileSync(abiPath, "utf8");
+  const abi = JSON.parse(abiContent);
+  return abi;
+}
+
+function sort(a: ContractFunction, b: ContractFunction): number {
+  return a.stateMutability == b.stateMutability ? 0 : a.stateMutability == "view" ? 1 : -1;
+}
+
+export function defineSubCommands(parent: Command, config: CommandConfig): Command {
   try {
-    const { name, abiFile, rename, filter } = config;
-
-    const abiPath = path.resolve(process.cwd(), "abis", abiFile);
-    const abiContent = fs.readFileSync(abiPath, "utf8");
-    const abi = JSON.parse(abiContent);
-    const contractName = path.basename(abiFile, path.extname(abiFile));
-
-    // Extract functions, errors, and events
-    const functions = abi.abi
-      .filter((item: any) => item.type === "function")
-      .map((item: any) => ({ ...item, _type: "function" }));
-
-    // Extract errors and events in one pass
-    const { errors, events } = extractErrorsAndEvents(abi);
-
-    // Combine all items for complete ABI information
-    const allItems = [...functions, ...errors, ...events];
-
-    // Process functions for CLI commands
-    const functionItems = extractFunctions(abi);
-
-    // Apply custom filter if provided
-    const filtered = filter ? functionItems.filter(filter) : functionItems;
-
+    const { name, intfAbi: intfAbiFile, implAbi: implAbiFile, rename, filter } = config;
+    const nonFuncAbiItems = implAbiFile ? extractErrorsAndEvents(loadAbi(implAbiFile)) : [];
+    let funcAbiItems = extractFunctions(loadAbi(intfAbiFile));
+    const filtered = filter ? funcAbiItems.filter(filter) : funcAbiItems;
+    const contractName = intfAbiFile;
     // Create the main command for this contract
-    const level1Cmd = program.command(name).description(`${name} commands for ${contractName}`);
-
-    // Track command names to handle duplicates
-    const level2Cmds = new Map<string, number>();
-
+    const level1CmdName = parent.command(name).description(`${name} commands for ${contractName}`);
+    // Track command names to handle duplicates, level2CmdName => count
+    const level2CmdCounts = new Map<string, number>();
     // Generate a command for each function
-    filtered.forEach((func: ContractFunction) => {
-      let funcName = rename ? rename(func.name) : func.name;
-      let num: number = level2Cmds.get(funcName) || 0;
-      const level2CmdName = num > 0 ? `${funcName}${num + 1}` : funcName;
-      level2Cmds.set(funcName, num + 1);
-      generateFunctionCommand(level1Cmd, level2CmdName, func, contractName);
+    filtered.sort(sort).forEach((funcAbiItem: ContractFunction) => {
+      let cmdName = rename ? rename(funcAbiItem.name) : funcAbiItem.name;
+      let count: number = level2CmdCounts.get(cmdName) || 0;
+      let postfix = count > 0 ? `${count + 1}` : "";
+      level2CmdCounts.set(cmdName, count + 1);
+      const level2CmdName = `${cmdName}${postfix}`;
+      defineCommandFromFunction(level1CmdName, level2CmdName, funcAbiItem, nonFuncAbiItems, contractName);
     });
 
-    return program;
+    return parent;
   } catch (error) {
-    console.error(`Error configuring subcommand ${config.name} from ${config.abiFile}:`, error);
-    return program;
+    console.error(`Error configuring subcommand ${config.name} from ${config.intfAbi}:`, error);
+    return parent;
   }
 }
 
-/**
- * Extract errors and events from an ABI in one pass
- * @param abi The ABI object
- * @returns Object containing arrays of error and event definitions
- */
-export function extractErrorsAndEvents(abi: any): { errors: ContractFunction[], events: ContractFunction[] } {
-  const errors: ContractFunction[] = [];
-  const events: ContractFunction[] = [];
-  
-  // Process both errors and events in a single pass
-  for (const item of abi.abi || []) {
-    if (item.type !== "error" && item.type !== "event") continue;
-    
-    const signature = `${item.name}(${(item.inputs || []).map((i: any) => i.type).join(",")})`;
-    
-    // Handle case where metadata might not exist or have expected structure
-    const metadata = abi.metadata?.output || { 
-      userdoc: { errors: {}, events: {} }, 
-      devdoc: { errors: {}, events: {} } 
-    };
-    
-    // Get documentation based on item type
-    const docType = item.type === "error" ? "errors" : "events";
-    const userdoc = metadata.userdoc?.[docType]?.[signature] || {};
-    const devdoc = metadata.devdoc?.[docType]?.[signature] || {};
-    
-    // Merge documentation with priority to userdoc
-    const mergedDocs = {
-      signature,
-      ...devdoc,
-      ...userdoc,
-      params: {
-        ...(devdoc.params || {}),
-        ...(userdoc.params || {})
-      }
-    };
-    
-    // Only include params if they exist
-    if (Object.keys(mergedDocs.params || {}).length === 0) {
-      delete mergedDocs.params;
-    }
-    
-    const processedItem = { ...item, _metadata: mergedDocs } as ContractFunction;
-    
-    // Add to appropriate collection
-    if (item.type === "error") {
-      errors.push(processedItem);
-    } else {
-      events.push(processedItem);
-    }
-  }
-  
-  return { errors, events };
-}
-
-// Backward compatibility functions
-export function extractErrors(abi: any): ContractFunction[] {
-  return extractErrorsAndEvents(abi).errors;
-}
-
-export function extractEvents(abi: any): ContractFunction[] {
-  return extractErrorsAndEvents(abi).events;
+export function extractErrorsAndEvents(abi: any): ContractFunction[] {
+  return (abi.abi || []).filter((item: any) => item.type == "error" || item.type == "event");
 }
 
 export function extractFunctions(abi: any): ContractFunction[] {
-  // Extract all functions, errors, and events
-  return abi.abi
-    .filter((item: any) => ["function", "error", "event"].includes(item.type))
+  const abiItems = abi.abi || [];
+  const metadata = abi.metadata?.output || {};
+  const userMethods = metadata.userdoc?.methods || {};
+  const devMethods = metadata.devdoc?.methods || {};
+  return abiItems
+    .filter((item: any) => item.type === "function")
     .map((item: any) => {
-      // Generate signature for the item
       const signature = toFunctionSignature(item);
-      // : `${item.name}(${(item.inputs || []).map((i: any) => i.type).join(",")})`;
-
-      // Handle case where metadata might not exist or have expected structure
-      const metadata = abi.metadata?.output || {
-        userdoc: { methods: {}, events: {}, errors: {} },
-        devdoc: { methods: {}, events: {}, errors: {} },
-      };
-
-      // Get documentation based on item type
-      let userdoc = {};
-      let devdoc = {};
-
-      if (item.type === "function") {
-        userdoc = metadata.userdoc?.methods?.[signature] || {};
-        devdoc = metadata.devdoc?.methods?.[signature] || {};
-      } else if (item.type === "event") {
-        userdoc = metadata.userdoc?.events?.[signature] || {};
-        devdoc = metadata.devdoc?.events?.[signature] || {};
-      } else if (item.type === "error") {
-        userdoc = metadata.userdoc?.errors?.[signature] || {};
-        devdoc = metadata.devdoc?.errors?.[signature] || {};
-      }
-
-      // Merge documentation with priority to userdoc
-      const mergedDocs = {
+      const userdoc = userMethods[signature] || {};
+      const devdoc = devMethods[signature] || {};
+      const _metadata = {
         signature,
-        ...devdoc, // devdoc first (lower priority)
-        ...userdoc, // userdoc overrides (higher priority)
-        // Merge params from both sources if they exist
-        params: {
-          ...(devdoc.params || {}),
-          ...(userdoc?.params || {}),
-        },
+        ...devdoc,
+        ...userdoc,
       };
-
-      // Only include params if they exist
-      if (Object.keys(mergedDocs.params).length === 0) {
-        delete mergedDocs.params;
-      }
-
-      return { ...item, _metadata: mergedDocs } as ContractFunction;
+      return {
+        ...item,
+        _metadata,
+      } as ContractFunction;
     });
 }
 
-export function generateFunctionCommand(
-  cmd: Command,
+export function defineCommandFromFunction(
+  parent: Command,
   name: string,
-  func: ContractFunction,
-  contractName: string
+  funcAbiItem: ContractFunction,
+  nonFuncAbiItems: ContractFunction[],
+  contract: string
 ): Command {
-  // Skip generating commands for errors and events
-  if (func.type !== "function") {
-    return cmd;
-  }
-
-  // Use notice from metadata or generate a default description
-  let desc = func._metadata?.notice || `Call ${func.name} function`;
-  const subCmd = cmd.command(name).description(desc);
-
-  // Add arguments for each input parameter
-  func.inputs.forEach((input) => {
-    const paramDesc = func._metadata?.params?.[input.name] || `${input.type} parameter`;
-    subCmd.argument(`<${input.name}>`, paramDesc);
+  let desc = funcAbiItem._metadata?.notice || `Call ${funcAbiItem.name} function`;
+  const cmd = parent.command(name).description(desc);
+  funcAbiItem.inputs.forEach((input) => {
+    const argDesc = funcAbiItem._metadata?.params?.[input.name] || `${input.type} parameter`;
+    cmd.argument(`<${input.name}>`, argDesc);
   });
 
-  // Determine if this is a read-only function
-  const isReadFunction = func.stateMutability === "view" || func.stateMutability === "pure";
-
-  if (isReadFunction) {
-    subCmd.option("-u, --universe <universe>", "Universe name", "local").action(readAction(func, contractName));
+  if (funcAbiItem.stateMutability === "view" || funcAbiItem.stateMutability === "pure") {
+    cmd
+      .option("-u, --universe <universe>", "Universe name", "local")
+      .action(readContract(funcAbiItem, nonFuncAbiItems, contract));
   } else {
-    subCmd
+    cmd
       .option("-u, --universe <universe>", "Universe name", "local")
       .option("-a, --account <account>", "Account address to use for the transaction")
       .option("-k, --private-key <key>", "Private key to sign the transaction")
       .option("-p, --password [password]", "Password to decrypt the private key")
       .option("-f, --password-file <file>", "File containing the password to decrypt the private key")
-      .action(writeAction(func, contractName));
+      .action(writeContract(funcAbiItem, nonFuncAbiItems, contract));
   }
-
-  return subCmd;
+  return cmd;
 }
 
-function preprocessArgs(raw: any[], func: ContractFunction): any[] {
-  return raw.map((arg, index) => {
-    const paramInfo = func.inputs[index];
-    const t = paramInfo?.type;
-    const arg2 = t === "address" || t.startsWith("bytes") || t === "string" ? arg : JSON5.parse(arg);
+function checkArguments(raw: any[], func: ContractFunction): any[] {
+  return raw.map((rawArg, index) => {
+    const abiParam = func.inputs[index];
+    const pt = abiParam?.type;
+    const arg = pt === "address" || pt.startsWith("bytes") || pt === "string" ? rawArg : JSON5.parse(rawArg);
     try {
-      // console.log(arg2);
-      encodeAbiParameters([paramInfo], [arg2]);
+      encodeAbiParameters([abiParam], [arg]);
     } catch (e: any) {
-      console.log(formatAbiParameter(paramInfo));
-      throw new Error(`invalid param ${paramInfo.name}(${paramInfo.internalType}): ${e.message}`);
+      console.log(formatAbiParameter(abiParam));
+      throw new Error(`invalid param ${abiParam.name}(${abiParam.internalType}): ${e.message}`);
     }
-    return arg2;
+    return arg;
   });
 }
 
-function writeAction(func: ContractFunction, contractName: string): (this: Command) => Promise<void> {
-  return async function read(this: Command) {
+function writeContract(
+  func: ContractFunction,
+  nonFuncAbiItems: ContractFunction[],
+  contract: string
+): (this: Command) => Promise<void> {
+  return async function (this: Command) {
     const opts = this.opts();
     const config: UniverseConfig = getUniverseConfig(opts);
-    const args = preprocessArgs(this.args, func);
+    const args = checkArguments(this.args, func);
     const publicClient = getPublicClient(config);
-    const walletClient = getWalletClient(config, opts);
-    const contractAddress = getContractAddress(config, contractName, args);
+    const walletClient = await getWalletClient(config, opts);
+    const contractAddress = getContractAddress(config, contract, args);
     console.log({ contractAddress, args, opts, config });
-    try {
-      const { request } = await publicClient.simulateContract({
-        address: contractAddress,
-        abi: [func],
-        functionName: func.name,
-        args: args as any[],
-        account: walletClient.account,
-      });
-      const hash = await walletClient.writeContract(request);
-      console.log(`Transaction sent: ${hash}`);
-      console.log("Waiting for transaction to be mined...");
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
-      console.log("Transaction mined:", receipt);
-    } catch (err: any) {
-      if (err instanceof BaseError) {
-        const revertError = err.walk((err) => err instanceof ContractFunctionRevertedError);
-        console.log(revertError);
-        if (revertError instanceof ContractFunctionRevertedError) {
-          const errorName = revertError.data?.errorName ?? "";
-          // do something with `errorName`
-        }
-      }
-    }
+
+    const { request } = await publicClient.simulateContract({
+      address: contractAddress,
+      abi: [func, ...nonFuncAbiItems],
+      functionName: func.name,
+      args: args as any[],
+      account: walletClient.account,
+    });
+    const hash = await walletClient.writeContract(request);
+    console.log(`Transaction sent: ${hash}`);
+    console.log("Waiting for transaction to be mined...");
+    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+    console.log("Transaction mined:", receipt);
+
+    // ai! show events and return values
   };
 }
 
-function readAction(func: ContractFunction, contractName: string): (this: Command) => Promise<void> {
-  return async function read(this: Command) {
+function readContract(
+  func: ContractFunction,
+  nonFuncAbiItems: ContractFunction[],
+  contract: string
+): (this: Command) => Promise<void> {
+  return async function (this: Command) {
     const opts = this.opts();
     const config: UniverseConfig = getUniverseConfig(opts);
     const publicClient = getPublicClient(config);
-    const args = preprocessArgs(this.args, func);
-    const contractAddress = getContractAddress(config, contractName, args);
+    const args = checkArguments(this.args, func);
+    const contractAddress = getContractAddress(config, contract, args);
 
-    try {
-      console.log({ contractAddress, args, opts, config });
-      console.log(`Calling view function on ${func.name}...`);
-      const result = await publicClient.readContract({
-        address: contractAddress,
-        abi: [func],
-        functionName: func.name,
-        args: args as any[],
-      });
-      console.log(`Result:`, result);
-    } catch (error) {
-      console.error(`Error executing function:`, error);
-      process.exit(1);
-    }
+    console.log({ contractAddress, args, opts, config });
+    console.log(`Calling view function on ${func.name}...`);
+    const result = await publicClient.readContract({
+      address: contractAddress,
+      abi: [func, ...nonFuncAbiItems],
+      functionName: func.name,
+      args: args as any[],
+    });
+    console.log(`Result:`, result);
   };
 }
