@@ -294,15 +294,295 @@ for (const [typeName, info] of Object.entries(typeInfo)) {
   }
 }
 
-// native: address, string, uintNN
-// struct
-// enum
-// tuple
-//
-// type = 'native' | 'struct' | 'enum' | 'tuple'
-// name = address, string for native type, enum name or struct name, if tuple : '(comma separated names of sub types)'
+// Type definitions for ABI types
+export type TypeKind = 'native' | 'struct' | 'enum' | 'tuple';
 
-// ai! write functions:
-// 1. define a type to store infomation about an abi type, including name, type, and its abi type(raw format stored in json). type = 'native' | 'struct' | 'enum' | 'tuple', name = address, string for native type, enum name or struct name, if tuple : '(comma separated names of sub types)'
-// 2. write function to extract all types from abi files
-// 3. write a function to parse a string as a type, the type is specified using the name we just discussed.
+export interface AbiTypeInfo {
+  // The name of the type (e.g., "address", "Descriptor", "(uint256,bool)")
+  name: string;
+  // The kind of type (native, struct, enum, tuple)
+  kind: TypeKind;
+  // The raw ABI type representation
+  abiType: string;
+  // For structs and tuples: component types
+  components?: AbiTypeInfo[];
+  // For enums: possible values (if available)
+  values?: string[];
+  // Source information
+  sourceContract?: string;
+  sourceFile?: string;
+}
+
+/**
+ * Extract all types from ABI files and build a type registry
+ * @param abiDir Directory containing ABI files
+ * @returns Map of type names to their type information
+ */
+export function buildTypeRegistry(abiDir: string = path.resolve(process.cwd(), "abis")): Map<string, AbiTypeInfo> {
+  const typeRegistry = new Map<string, AbiTypeInfo>();
+  
+  // Register native types
+  registerNativeTypes(typeRegistry);
+  
+  if (!fs.existsSync(abiDir)) {
+    console.warn(`ABI directory not found: ${abiDir}`);
+    return typeRegistry;
+  }
+  
+  const files = fs.readdirSync(abiDir).filter(file => file.endsWith('.json'));
+  
+  for (const file of files) {
+    try {
+      const abiPath = path.join(abiDir, file);
+      const abiContent = fs.readFileSync(abiPath, 'utf8');
+      const abi = JSON.parse(abiContent);
+      const contractName = path.basename(file, '.json');
+      
+      // Process all items in the ABI
+      for (const item of abi.abi || []) {
+        if (item.type === 'function' || item.type === 'event' || item.type === 'error') {
+          // Process inputs and outputs
+          const params = [...(item.inputs || [])];
+          if (item.type === 'function') {
+            params.push(...(item.outputs || []));
+          }
+          
+          for (const param of params) {
+            processTypeDefinition(param, typeRegistry, contractName, file);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn(`Error processing ABI file ${file}:`, error);
+    }
+  }
+  
+  return typeRegistry;
+}
+
+/**
+ * Process a parameter type definition and add it to the registry
+ */
+function processTypeDefinition(
+  param: any, 
+  registry: Map<string, AbiTypeInfo>, 
+  contractName: string, 
+  file: string
+): void {
+  if (!param || !param.type) return;
+  
+  // Handle struct types
+  if (param.internalType?.startsWith('struct ') && param.type === 'tuple') {
+    const structName = param.internalType.substring(7);
+    
+    // Skip if we already have this struct with components
+    if (registry.has(structName) && registry.get(structName)?.components) {
+      return;
+    }
+    
+    const components: AbiTypeInfo[] = [];
+    
+    // Process components
+    if (param.components) {
+      for (const component of param.components) {
+        processTypeDefinition(component, registry, contractName, file);
+        
+        if (component.type) {
+          const componentType = parseTypeString(component.type, registry);
+          if (componentType) {
+            components.push(componentType);
+          }
+        }
+      }
+    }
+    
+    registry.set(structName, {
+      name: structName,
+      kind: 'struct',
+      abiType: 'tuple',
+      components,
+      sourceContract: contractName,
+      sourceFile: file
+    });
+  }
+  // Handle enum types
+  else if (param.internalType?.startsWith('enum ')) {
+    const enumName = param.internalType.substring(5);
+    
+    if (!registry.has(enumName)) {
+      registry.set(enumName, {
+        name: enumName,
+        kind: 'enum',
+        abiType: param.type,
+        values: [], // We can't get enum values from ABI directly
+        sourceContract: contractName,
+        sourceFile: file
+      });
+    }
+  }
+  // Handle tuple types
+  else if (param.type === 'tuple') {
+    const components: AbiTypeInfo[] = [];
+    
+    // Process components
+    if (param.components) {
+      for (const component of param.components) {
+        processTypeDefinition(component, registry, contractName, file);
+        
+        if (component.type) {
+          const componentType = parseTypeString(component.type, registry);
+          if (componentType) {
+            components.push(componentType);
+          }
+        }
+      }
+    }
+    
+    // Create a tuple name from its components
+    const tupleName = `(${components.map(c => c.name).join(',')})`;
+    
+    registry.set(tupleName, {
+      name: tupleName,
+      kind: 'tuple',
+      abiType: 'tuple',
+      components,
+      sourceContract: contractName,
+      sourceFile: file
+    });
+  }
+  // Handle array types
+  else if (param.type.includes('[')) {
+    const baseTypeName = param.type.replace(/\[\d*\]/g, '');
+    const baseType = parseTypeString(baseTypeName, registry);
+    
+    if (baseType) {
+      const arrayDimensions = param.type.match(/\[\d*\]/g) || [];
+      let arrayType = baseType;
+      
+      for (const dim of arrayDimensions) {
+        const arrayName = `${arrayType.name}${dim}`;
+        
+        if (!registry.has(arrayName)) {
+          registry.set(arrayName, {
+            name: arrayName,
+            kind: arrayType.kind,
+            abiType: `${arrayType.abiType}${dim}`,
+            components: arrayType.components,
+            sourceContract: contractName,
+            sourceFile: file
+          });
+        }
+        
+        arrayType = registry.get(arrayName)!;
+      }
+    }
+  }
+  
+  // Process nested components if any
+  if (param.components) {
+    for (const component of param.components) {
+      processTypeDefinition(component, registry, contractName, file);
+    }
+  }
+}
+
+/**
+ * Register all native Solidity types in the registry
+ */
+function registerNativeTypes(registry: Map<string, AbiTypeInfo>): void {
+  // Integer types
+  for (let i = 8; i <= 256; i += 8) {
+    registry.set(`uint${i}`, { name: `uint${i}`, kind: 'native', abiType: `uint${i}` });
+    registry.set(`int${i}`, { name: `int${i}`, kind: 'native', abiType: `int${i}` });
+  }
+  
+  // Special cases
+  registry.set('uint', { name: 'uint', kind: 'native', abiType: 'uint256' });
+  registry.set('int', { name: 'int', kind: 'native', abiType: 'int256' });
+  
+  // Address, bool, string
+  registry.set('address', { name: 'address', kind: 'native', abiType: 'address' });
+  registry.set('bool', { name: 'bool', kind: 'native', abiType: 'bool' });
+  registry.set('string', { name: 'string', kind: 'native', abiType: 'string' });
+  
+  // Bytes
+  registry.set('bytes', { name: 'bytes', kind: 'native', abiType: 'bytes' });
+  for (let i = 1; i <= 32; i++) {
+    registry.set(`bytes${i}`, { name: `bytes${i}`, kind: 'native', abiType: `bytes${i}` });
+  }
+}
+
+/**
+ * Parse a type string and return the corresponding AbiTypeInfo
+ * @param typeStr The type string to parse (e.g., "address", "Descriptor", "(uint256,bool)")
+ * @param registry The type registry to use for lookups
+ * @returns The parsed type information or undefined if not found
+ */
+export function parseTypeString(typeStr: string, registry: Map<string, AbiTypeInfo>): AbiTypeInfo | undefined {
+  // Check if it's a direct match in the registry
+  if (registry.has(typeStr)) {
+    return registry.get(typeStr);
+  }
+  
+  // Check if it's an array type
+  if (typeStr.includes('[')) {
+    const baseTypeName = typeStr.replace(/\[\d*\]/g, '');
+    const baseType = registry.get(baseTypeName);
+    
+    if (baseType) {
+      const arrayDimensions = typeStr.match(/\[\d*\]/g) || [];
+      let arrayType = baseType;
+      
+      for (const dim of arrayDimensions) {
+        const arrayName = `${arrayType.name}${dim}`;
+        arrayType = registry.get(arrayName) || {
+          name: arrayName,
+          kind: arrayType.kind,
+          abiType: `${arrayType.abiType}${dim}`,
+          components: arrayType.components
+        };
+      }
+      
+      return arrayType;
+    }
+  }
+  
+  // Check if it's a tuple type (starts with '(' and ends with ')')
+  if (typeStr.startsWith('(') && typeStr.endsWith(')')) {
+    // Parse the tuple components
+    const componentsStr = typeStr.substring(1, typeStr.length - 1);
+    const componentNames = componentsStr.split(',');
+    
+    const components: AbiTypeInfo[] = [];
+    for (const name of componentNames) {
+      const component = registry.get(name);
+      if (component) {
+        components.push(component);
+      } else {
+        console.warn(`Unknown type in tuple: ${name}`);
+        return undefined;
+      }
+    }
+    
+    return {
+      name: typeStr,
+      kind: 'tuple',
+      abiType: 'tuple',
+      components
+    };
+  }
+  
+  // Type not found
+  console.warn(`Unknown type: ${typeStr}`);
+  return undefined;
+}
+
+// Example usage:
+// const typeRegistry = buildTypeRegistry();
+// console.log("Type registry built with", typeRegistry.size, "types");
+// 
+// // Parse a type string
+// const parsedType = parseTypeString("(address,uint256)", typeRegistry);
+// if (parsedType) {
+//   console.log("Parsed type:", parsedType);
+// }
