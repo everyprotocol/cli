@@ -317,11 +317,26 @@ export function parseValue(registry: Map<string, AbiTypeInfo>, typeName: string,
       return nativeValue;
 
     case "struct":
+      // Check for duplicate field names
+      const fieldNames = typeInfo.components?.map(c => c.name) || [];
+      const hasDuplicates = fieldNames.some((name, index) => 
+        fieldNames.indexOf(name) !== index
+      );
+      
       // Handle both object notation and tuple notation
       if (valueStr.startsWith("{") && valueStr.endsWith("}")) {
         return parseStructObjectNotation(typeInfo, valueStr);
       } else if (valueStr.startsWith("(") && valueStr.endsWith(")")) {
-        return parseStructTupleNotation(typeInfo, valueStr);
+        if (hasDuplicates) {
+          // For structs with duplicate field names, return the raw tuple values
+          const tupleValues = parseTupleNotation(typeInfo, valueStr);
+          if (!tupleValues) {
+            throw new Error(`Failed to parse tuple values for ${typeName}`);
+          }
+          return tupleValues;
+        } else {
+          return parseStructTupleNotation(typeInfo, valueStr);
+        }
       } else {
         throw new Error(
           `Invalid struct value format for ${typeName}: ${valueStr}. Expected object notation {field=value} or tuple notation (value1,value2)`
@@ -488,6 +503,19 @@ function parseStructTupleNotation(typeInfo: AbiTypeInfo, valueStr: string): any 
     );
   }
 
+  // Check for duplicate field names
+  const fieldNames = typeInfo.components.map(c => c.name);
+  const duplicateNames = fieldNames.filter((name, index) => 
+    fieldNames.indexOf(name) !== index
+  );
+  
+  if (duplicateNames.length > 0) {
+    throw new Error(
+      `Struct ${typeInfo.name} has duplicate field names: ${duplicateNames.join(', ')}. ` +
+      `Cannot safely parse using tuple notation. Use array notation instead.`
+    );
+  }
+
   // Convert the array of values to an object with field names
   const result: any = {};
   typeInfo.components.forEach((component, index) => {
@@ -596,10 +624,23 @@ export function getTypeExample(typeInfo: AbiTypeInfo): string {
       if (!typeInfo.components || typeInfo.components.length === 0) {
         return "{}";
       }
-      // Generate both object and tuple notation examples
-      const objectExample = `{${typeInfo.components.map((comp) => `${comp.name}=${getTypeExample(comp)}`).join(", ")}}`;
-      const tupleExample = `(${typeInfo.components.map((comp) => getTypeExample(comp)).join(", ")})`;
-      return `Object notation: ${objectExample}\nTuple notation: ${tupleExample}`;
+      // Check for duplicate field names
+      const fieldNames = typeInfo.components.map(c => c.name);
+      const hasDuplicates = fieldNames.some((name, index) => 
+        fieldNames.indexOf(name) !== index
+      );
+      
+      // Generate examples
+      if (hasDuplicates) {
+        // For structs with duplicate field names, only show tuple notation
+        const tupleExample = `(${typeInfo.components.map((comp) => getTypeExample(comp)).join(", ")})`;
+        return `Tuple notation (recommended for this struct with duplicate field names): ${tupleExample}`;
+      } else {
+        // Generate both object and tuple notation examples
+        const objectExample = `{${typeInfo.components.map((comp) => `${comp.name}=${getTypeExample(comp)}`).join(", ")}}`;
+        const tupleExample = `(${typeInfo.components.map((comp) => getTypeExample(comp)).join(", ")})`;
+        return `Object notation: ${objectExample}\nTuple notation: ${tupleExample}`;
+      }
     case "enum":
       return typeInfo.values && typeInfo.values.length > 0 ? typeInfo.values[0] : "0";
     case "tuple":
