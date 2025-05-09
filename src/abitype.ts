@@ -4,6 +4,24 @@ import path from "path";
 // Type definitions for ABI types
 export type TypeKind = "native" | "struct" | "enum" | "tuple";
 
+// ai! the AbiTypeInfo should be compatible with the standard, so that it can be used together with other libs
+// and also, this way the name of the fileds are kept, it can be used in the object notation
+// {
+//       "name": "desc",
+//       "type": "tuple",
+//       "internalType": "struct Descriptor",
+//       "components": [
+//         {
+//           "name": "traits",
+//           "type": "uint32",
+//           "internalType": "uint32"
+//         },
+//         {
+//           "name": "rev",
+//           "type": "uint32",
+//           "internalType": "uint32"
+//         },
+
 export interface AbiTypeInfo {
   // The name of the type (e.g., "address", "Descriptor", "(uint256,bool)")
   name: string;
@@ -371,7 +389,9 @@ function parseNativeValue(abiType: string, valueStr: string): any {
     if (/^0x[0-9a-fA-F]{40}$/.test(valueStr)) {
       return valueStr;
     } else {
-      throw new Error(`Invalid address format for type ${abiType}: ${valueStr}. Expected 0x followed by 40 hex characters.`);
+      throw new Error(
+        `Invalid address format for type ${abiType}: ${valueStr}. Expected 0x followed by 40 hex characters.`
+      );
     }
   } else if (abiType === "bool") {
     // For booleans, accept true/false or 0/1
@@ -576,18 +596,16 @@ export function getTypeExample(typeInfo: AbiTypeInfo): string {
         return "{}";
       }
       // Generate both object and tuple notation examples
-      const objectExample = `{${typeInfo.components.map(comp => `${comp.name}=${getTypeExample(comp)}`).join(", ")}}`;
-      const tupleExample = `(${typeInfo.components.map(comp => getTypeExample(comp)).join(", ")})`;
+      const objectExample = `{${typeInfo.components.map((comp) => `${comp.name}=${getTypeExample(comp)}`).join(", ")}}`;
+      const tupleExample = `(${typeInfo.components.map((comp) => getTypeExample(comp)).join(", ")})`;
       return `Object notation: ${objectExample}\nTuple notation: ${tupleExample}`;
     case "enum":
-      return typeInfo.values && typeInfo.values.length > 0 
-        ? typeInfo.values[0] 
-        : "0";
+      return typeInfo.values && typeInfo.values.length > 0 ? typeInfo.values[0] : "0";
     case "tuple":
       if (!typeInfo.components || typeInfo.components.length === 0) {
         return "()";
       }
-      return `(${typeInfo.components.map(comp => getTypeExample(comp)).join(", ")})`;
+      return `(${typeInfo.components.map((comp) => getTypeExample(comp)).join(", ")})`;
     default:
       return "unknown";
   }
@@ -619,17 +637,17 @@ function getNativeTypeExample(abiType: string): string {
 /**
  * List all types in the registry by category
  */
-export function listTypes(registry: Map<string, AbiTypeInfo>): { 
-  native: string[], 
-  structs: string[], 
-  enums: string[], 
-  tuples: string[] 
+export function listTypes(registry: Map<string, AbiTypeInfo>): {
+  native: string[];
+  structs: string[];
+  enums: string[];
+  tuples: string[];
 } {
   const result = {
     native: [] as string[],
     structs: [] as string[],
     enums: [] as string[],
-    tuples: [] as string[]
+    tuples: [] as string[],
   };
 
   for (const [name, info] of registry.entries()) {
