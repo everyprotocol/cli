@@ -10,10 +10,23 @@ await main();
 
 async function main() {
   // Read version from package.json
-  // ai! this will not work if it's installed, coz we usually dont invoke the cmd under that dir
-  const packageJsonPath = path.resolve(process.cwd(), "package.json");
-  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
-
+  let packageJson;
+  try {
+    // First try to find package.json relative to the current script
+    const scriptDir = path.dirname(new URL(import.meta.url).pathname);
+    const packageJsonPath = path.resolve(scriptDir, "..", "package.json");
+    packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+  } catch (error) {
+    try {
+      // Fallback to current working directory
+      const packageJsonPath = path.resolve(process.cwd(), "package.json");
+      packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+    } catch (error) {
+      // If all else fails, use a default version
+      packageJson = { version: "0.1.0" };
+    }
+  }
+  
   const program = new Command()
     .name("every-cli")
     .description("CLI for interacting with Every Protocol contracts")
