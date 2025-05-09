@@ -32,11 +32,13 @@ export function extractDistinctTypes(abiDir: string = path.resolve(process.cwd()
           // Process inputs
           for (const input of item.inputs || []) {
             processType(input.type);
+            processInternalType(input.internalType);
 
             // Handle tuple components recursively
             if (input.components) {
               for (const component of input.components) {
                 processType(component.type);
+                processInternalType(component.internalType);
               }
             }
           }
@@ -45,11 +47,13 @@ export function extractDistinctTypes(abiDir: string = path.resolve(process.cwd()
           if (item.type === "function") {
             for (const output of item.outputs || []) {
               processType(output.type);
+              processInternalType(output.internalType);
 
               // Handle tuple components recursively
               if (output.components) {
                 for (const component of output.components) {
                   processType(component.type);
+                  processInternalType(component.internalType);
                 }
               }
             }
@@ -86,6 +90,28 @@ export function extractDistinctTypes(abiDir: string = path.resolve(process.cwd()
     }
   }
 
+  // Helper function to extract user-defined types from internalType
+  function processInternalType(internalType: string) {
+    if (!internalType) return;
+    
+    // Extract struct names from internalType (e.g., "struct Descriptor" -> "Descriptor")
+    if (internalType.startsWith("struct ")) {
+      userDefinedTypes.add(internalType.substring(7));
+    } 
+    // Extract enum names
+    else if (internalType.startsWith("enum ")) {
+      userDefinedTypes.add(internalType.substring(5));
+    }
+    // Extract contract names
+    else if (internalType.startsWith("contract ")) {
+      userDefinedTypes.add(internalType.substring(9));
+    }
+    // If it's not a native type and doesn't match the patterns above, it might be a custom type
+    else if (!isNativeType(internalType.replace(/\[\d*\]/g, ""))) {
+      userDefinedTypes.add(internalType.replace(/\[\d*\]/g, ""));
+    }
+  }
+
   return {
     nativeTypes: Array.from(nativeTypes).sort(),
     userDefinedTypes: Array.from(userDefinedTypes).sort(),
@@ -113,22 +139,3 @@ function isNativeType(type: string): boolean {
 const types = extractDistinctTypes();
 console.log("Native types:", types.nativeTypes);
 console.log("User-defined types:", types.userDefinedTypes);
-
-// ai! user defined type has a property "type", and also an internal type
-//   "outputs": [
-// {
-//   "name": "id",
-//   "type": "uint64",
-//   "internalType": "uint64"
-// },
-// {
-//   "name": "desc",
-//   "type": "tuple",
-//   "internalType": "struct Descriptor",
-//   "components": [
-//     {
-//       "name": "traits",
-//       "type": "uint32",
-//       "internalType": "uint32"
-//     },
-//     {
