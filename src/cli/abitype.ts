@@ -56,7 +56,10 @@ program
     
     console.log(`Type: ${typeInfo.name}`);
     console.log(`Kind: ${typeInfo.kind}`);
-    console.log(`ABI Type: ${typeInfo.abiType}`);
+    console.log(`Type: ${typeInfo.type}`);
+    if (typeInfo.internalType) {
+      console.log(`Internal Type: ${typeInfo.internalType}`);
+    }
     
     if (typeInfo.sourceContract) {
       console.log(`Source: ${typeInfo.sourceContract} (${typeInfo.sourceFile})`);

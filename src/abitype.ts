@@ -4,36 +4,16 @@ import path from "path";
 // Type definitions for ABI types
 export type TypeKind = "native" | "struct" | "enum" | "tuple";
 
-// ai! the AbiTypeInfo should be compatible with the standard, so that it can be used together with other libs
-// and also, this way the name of the fileds are kept, it can be used in the object notation
-// {
-//       "name": "desc",
-//       "type": "tuple",
-//       "internalType": "struct Descriptor",
-//       "components": [
-//         {
-//           "name": "traits",
-//           "type": "uint32",
-//           "internalType": "uint32"
-//         },
-//         {
-//           "name": "rev",
-//           "type": "uint32",
-//           "internalType": "uint32"
-//         },
-
 export interface AbiTypeInfo {
-  // The name of the type (e.g., "address", "Descriptor", "(uint256,bool)")
+  // Standard ABI fields
   name: string;
-  // The kind of type (native, struct, enum, tuple)
-  kind: TypeKind;
-  // The raw ABI type representation
-  abiType: string;
-  // For structs and tuples: component types
+  type: string;
+  internalType?: string;
   components?: AbiTypeInfo[];
-  // For enums: possible values (if available)
+  
+  // Extended fields for our type system
+  kind: TypeKind;
   values?: string[];
-  // Source information
   sourceContract?: string;
   sourceFile?: string;
 }
@@ -121,8 +101,9 @@ function processTypeDefinition(
 
     registry.set(structName, {
       name: structName,
+      type: "tuple",
+      internalType: `struct ${structName}`,
       kind: "struct",
-      abiType: "tuple",
       components,
       sourceContract: contractName,
       sourceFile: file,
@@ -135,8 +116,9 @@ function processTypeDefinition(
     if (!registry.has(enumName)) {
       registry.set(enumName, {
         name: enumName,
+        type: param.type,
+        internalType: `enum ${enumName}`,
         kind: "enum",
-        abiType: param.type,
         values: [], // We can't get enum values from ABI directly
         sourceContract: contractName,
         sourceFile: file,
@@ -166,8 +148,9 @@ function processTypeDefinition(
 
     registry.set(tupleName, {
       name: tupleName,
+      type: "tuple",
+      internalType: tupleName,
       kind: "tuple",
-      abiType: "tuple",
       components,
       sourceContract: contractName,
       sourceFile: file,
@@ -188,8 +171,9 @@ function processTypeDefinition(
         if (!registry.has(arrayName)) {
           registry.set(arrayName, {
             name: arrayName,
+            type: `${arrayType.type}${dim}`,
+            internalType: arrayType.internalType ? `${arrayType.internalType}${dim}` : undefined,
             kind: arrayType.kind,
-            abiType: `${arrayType.abiType}${dim}`,
             components: arrayType.components,
             sourceContract: contractName,
             sourceFile: file,
@@ -215,23 +199,23 @@ function processTypeDefinition(
 function registerNativeTypes(registry: Map<string, AbiTypeInfo>): void {
   // Integer types
   for (let i = 8; i <= 256; i += 8) {
-    registry.set(`uint${i}`, { name: `uint${i}`, kind: "native", abiType: `uint${i}` });
-    registry.set(`int${i}`, { name: `int${i}`, kind: "native", abiType: `int${i}` });
+    registry.set(`uint${i}`, { name: `uint${i}`, type: `uint${i}`, internalType: `uint${i}`, kind: "native" });
+    registry.set(`int${i}`, { name: `int${i}`, type: `int${i}`, internalType: `int${i}`, kind: "native" });
   }
 
   // Special cases
-  registry.set("uint", { name: "uint", kind: "native", abiType: "uint256" });
-  registry.set("int", { name: "int", kind: "native", abiType: "int256" });
+  registry.set("uint", { name: "uint", type: "uint256", internalType: "uint256", kind: "native" });
+  registry.set("int", { name: "int", type: "int256", internalType: "int256", kind: "native" });
 
   // Address, bool, string
-  registry.set("address", { name: "address", kind: "native", abiType: "address" });
-  registry.set("bool", { name: "bool", kind: "native", abiType: "bool" });
-  registry.set("string", { name: "string", kind: "native", abiType: "string" });
+  registry.set("address", { name: "address", type: "address", internalType: "address", kind: "native" });
+  registry.set("bool", { name: "bool", type: "bool", internalType: "bool", kind: "native" });
+  registry.set("string", { name: "string", type: "string", internalType: "string", kind: "native" });
 
   // Bytes
-  registry.set("bytes", { name: "bytes", kind: "native", abiType: "bytes" });
+  registry.set("bytes", { name: "bytes", type: "bytes", internalType: "bytes", kind: "native" });
   for (let i = 1; i <= 32; i++) {
-    registry.set(`bytes${i}`, { name: `bytes${i}`, kind: "native", abiType: `bytes${i}` });
+    registry.set(`bytes${i}`, { name: `bytes${i}`, type: `bytes${i}`, internalType: `bytes${i}`, kind: "native" });
   }
 }
 
@@ -257,8 +241,9 @@ export function parseTypeString(typeStr: string, registry: Map<string, AbiTypeIn
         const arrayName = `${arrayType.name}${dim}`;
         arrayType = registry.get(arrayName) || {
           name: arrayName,
+          type: `${arrayType.type}${dim}`,
+          internalType: arrayType.internalType ? `${arrayType.internalType}${dim}` : undefined,
           kind: arrayType.kind,
-          abiType: `${arrayType.abiType}${dim}`,
           components: arrayType.components,
         };
       }
@@ -286,8 +271,9 @@ export function parseTypeString(typeStr: string, registry: Map<string, AbiTypeIn
 
     return {
       name: typeStr,
+      type: "tuple",
+      internalType: typeStr,
       kind: "tuple",
-      abiType: "tuple",
       components,
     };
   }
@@ -309,7 +295,7 @@ export function parseValue(registry: Map<string, AbiTypeInfo>, typeName: string,
   // Handle different kinds of types
   switch (typeInfo.kind) {
     case "native":
-      const nativeValue = parseNativeValue(typeInfo.abiType, valueStr);
+      const nativeValue = parseNativeValue(typeInfo.type, valueStr);
       if (nativeValue === undefined) {
         throw new Error(`Failed to parse native value for type ${typeName}: ${valueStr}`);
       }
@@ -590,7 +576,7 @@ function splitTupleValues(content: string): string[] {
 export function getTypeExample(typeInfo: AbiTypeInfo): string {
   switch (typeInfo.kind) {
     case "native":
-      return getNativeTypeExample(typeInfo.abiType);
+      return getNativeTypeExample(typeInfo.type);
     case "struct":
       if (!typeInfo.components || typeInfo.components.length === 0) {
         return "{}";
