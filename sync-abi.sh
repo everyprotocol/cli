@@ -2,6 +2,7 @@
 # Script to sync ABI files from the core project
 
 # Set the directory where contract output files are located
+# ai! use a default value yet can be overwrite ba specifying a env var
 CONTRACTS_OUT_DIR="../core/out"
 
 # Check if the directory exists
@@ -19,7 +20,7 @@ fi
 # Copy ABI files for each contract
 for abi in SetRegistry OmniRegistry KindRegistry ElementRegistry ObjectMinter; do
     source_file="$CONTRACTS_OUT_DIR/${abi}.sol/${abi}.json"
-    
+
     if [ -f "$source_file" ]; then
         echo "Copying $abi ABI..."
         cp "$source_file" abis/
