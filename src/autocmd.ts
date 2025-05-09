@@ -146,6 +146,26 @@ function writeContract(
     const receipt = await publicClient.waitForTransactionReceipt({ hash });
     console.log("Transaction mined:", receipt);
 
+    // ai! use viem utils e.g.,
+    // import { parseEventLogs } from 'viem'
+    // import { erc20Abi } from './abi'
+    // import { client } from './client'
+
+    // const receipt = await getTransactionReceipt(client, {
+    //   hash: '0xec23b2ba4bc59ba61554507c1b1bc91649e6586eb2dd00c728e8ed0db8bb37ea',
+    // })
+
+    // const logs = parseEventLogs({
+    //   abi: erc20Abi,
+    //   logs: receipt.logs,
+    // })
+    // [
+    //   { args: { ... }, eventName: 'Transfer', logIndex: 3 ... },
+    //   { args: { ... }, eventName: 'Approval', logIndex: 5 ... },
+    //   ...
+    // ]
+    //
+    //
     // Parse and display events from the transaction receipt
     if (receipt.logs && receipt.logs.length > 0) {
       console.log("\nEvents emitted:");
@@ -156,11 +176,12 @@ function writeContract(
             data: log.data,
             topics: log.topics,
           });
-          
+
           if (event) {
             console.log(`- ${event.eventName}`);
             for (const [key, value] of Object.entries(event.args)) {
-              if (isNaN(Number(key))) { // Skip numeric keys (array indices)
+              if (isNaN(Number(key))) {
+                // Skip numeric keys (array indices)
                 console.log(`  ${key}: ${formatValue(value)}`);
               }
             }
@@ -183,21 +204,21 @@ function writeContract(
 // Helper function to format values for display
 function formatValue(value: any): string {
   if (value === null || value === undefined) {
-    return 'null';
+    return "null";
   }
-  
-  if (typeof value === 'bigint') {
+
+  if (typeof value === "bigint") {
     return value.toString();
   }
-  
+
   if (Array.isArray(value)) {
-    return `[${value.map(formatValue).join(', ')}]`;
+    return `[${value.map(formatValue).join(", ")}]`;
   }
-  
-  if (typeof value === 'object') {
+
+  if (typeof value === "object") {
     return JSON.stringify(value);
   }
-  
+
   return String(value);
 }
 
