@@ -2,9 +2,9 @@ import { Command } from "commander";
 import fs from "fs";
 import path from "path";
 import { encodeAbiParameters, toFunctionSignature, parseEventLogs } from "viem";
-import { formatAbiParameter } from "abitype";
+import { formatAbiParameter, Abi } from "abitype";
 import JSON5 from "json5";
-import type { ContractFunction, UniverseConfig, CommandConfig } from "./types";
+import type { ContractFunction, UniverseConfig, CommandConfig, CommandContext } from "./types";
 import { getWalletClient, getPublicClient, getContractAddress } from "./client";
 import { getUniverseConfig } from "./config";
 
@@ -19,45 +19,55 @@ function sort(a: ContractFunction, b: ContractFunction): number {
   return a.stateMutability == b.stateMutability ? 0 : a.stateMutability == "view" ? 1 : -1;
 }
 
-export function defineSubCommands(parent: Command, config: CommandConfig): Command {
-  try {
-    const { name, interface: intfAbiFile, contract: implAbiFile, rename, filter } = config;
-    const nonFuncAbiItems = implAbiFile ? extractErrorsAndEvents(loadAbi(implAbiFile)) : [];
-    let funcAbiItems = extractFunctions(loadAbi(intfAbiFile));
-    const filtered = filter ? funcAbiItems.filter(filter) : funcAbiItems;
+// export function defineSubCommands(parent: Command, config: CommandConfig): Command {
+//   try {
+//     const { name, interface: intfAbiFile, contract: implAbiFile, rename, filter } = config;
+//     const nonFuncAbiItems = implAbiFile ? extractErrorsAndEvents(loadAbi(implAbiFile)) : [];
+//     let funcAbiItems = extractFunctions(loadAbi(intfAbiFile));
+//     const filtered = filter ? funcAbiItems.filter(filter) : funcAbiItems;
 
-    // Add level2 commands to the parent command
-    addLevel2Commands(parent, filtered, nonFuncAbiItems, config, rename);
+//     // Add level2 commands to the parent command
+//     addLevel2Commands(parent, filtered, nonFuncAbiItems, config, rename);
 
-    return parent;
-  } catch (error) {
-    console.error(`Error configuring subcommand ${config.name} from ${config.interface}:`, error);
-    return parent;
-  }
+//     return parent;
+//   } catch (error) {
+//     console.error(`Error configuring subcommand ${config.name} from ${config.interface}:`, error);
+//     return parent;
+//   }
+// }
+
+// /**
+//  * Adds level2 commands to a parent command
+//  */
+// function addLevel2Commands(
+//   parent: Command,
+//   funcAbiItems: ContractFunction[],
+//   nonFuncAbiItems: ContractFunction[],
+//   config: CommandConfig,
+//   rename?: (name: string) => string
+// ): void {
+//   // Track command names to handle duplicates, level2CmdName => count
+//   const level2CmdCounts = new Map<string, number>();
+
+//   // Generate a command for each function
+//   funcAbiItems.sort(sort).forEach((funcAbiItem: ContractFunction) => {
+//     let cmdName = rename ? rename(funcAbiItem.name) : funcAbiItem.name;
+//     let count: number = level2CmdCounts.get(cmdName) || 0;
+//     let postfix = count > 0 ? `${count + 1}` : "";
+//     level2CmdCounts.set(cmdName, count + 1);
+//     const level2CmdName = `${cmdName}${postfix}`;
+//     defineCommandFromFunction(parent, level2CmdName, funcAbiItem, nonFuncAbiItems, config);
+//   });
+// }
+
+export function loadAbiFunctions(name: string): ContractFunction[] {
+  let abi = loadAbi(name);
+  return extractFunctions(abi);
 }
 
-/**
- * Adds level2 commands to a parent command
- */
-function addLevel2Commands(
-  parent: Command,
-  funcAbiItems: ContractFunction[],
-  nonFuncAbiItems: ContractFunction[],
-  config: CommandConfig,
-  rename?: (name: string) => string
-): void {
-  // Track command names to handle duplicates, level2CmdName => count
-  const level2CmdCounts = new Map<string, number>();
-
-  // Generate a command for each function
-  funcAbiItems.sort(sort).forEach((funcAbiItem: ContractFunction) => {
-    let cmdName = rename ? rename(funcAbiItem.name) : funcAbiItem.name;
-    let count: number = level2CmdCounts.get(cmdName) || 0;
-    let postfix = count > 0 ? `${count + 1}` : "";
-    level2CmdCounts.set(cmdName, count + 1);
-    const level2CmdName = `${cmdName}${postfix}`;
-    defineCommandFromFunction(parent, level2CmdName, funcAbiItem, nonFuncAbiItems, config);
-  });
+export function loadAbiNonFunctions(name: string): ContractFunction[] {
+  let abi = loadAbi(name);
+  return extractErrorsAndEvents(abi);
 }
 
 export function extractErrorsAndEvents(abi: any): ContractFunction[] {
@@ -87,15 +97,44 @@ export function extractFunctions(abi: any): ContractFunction[] {
     });
 }
 
-export function defineCommandFromFunction(
-  parent: Command,
-  name: string,
+// export function defineCommandFromFunction(
+//   parent: Command,
+//   name: string,
+//   funcAbiItem: ContractFunction,
+//   nonFuncAbiItems: ContractFunction[],
+//   config: CommandConfig
+// ): Command {
+//   let desc = funcAbiItem._metadata?.notice || `Call ${funcAbiItem.name} function`;
+//   const cmd = parent.command(name).description(desc);
+//   funcAbiItem.inputs.forEach((input) => {
+//     const argDesc = funcAbiItem._metadata?.params?.[input.name] || `${input.type} parameter`;
+//     cmd.argument(`<${input.name}>`, argDesc);
+//   });
+
+//   if (funcAbiItem.stateMutability === "view" || funcAbiItem.stateMutability === "pure") {
+//     cmd
+//       .option("-u, --universe <universe>", "Universe name", "local")
+//       .action(readContract(funcAbiItem, nonFuncAbiItems, config));
+//   } else {
+//     cmd
+//       .option("-u, --universe <universe>", "Universe name", "local")
+//       .option("-a, --account <account>", "Account address to use for the transaction")
+//       .option("-k, --private-key <key>", "Private key to sign the transaction")
+//       .option("-p, --password [password]", "Password to decrypt the private key")
+//       .option("-f, --password-file <file>", "File containing the password to decrypt the private key")
+//       .action(writeContract(funcAbiItem, nonFuncAbiItems, config));
+//   }
+//   return cmd;
+// }
+
+export function generateCommand(
   funcAbiItem: ContractFunction,
   nonFuncAbiItems: ContractFunction[],
-  config: CommandConfig
+  context: CommandContext
 ): Command {
+  const name = funcAbiItem.name;
   let desc = funcAbiItem._metadata?.notice || `Call ${funcAbiItem.name} function`;
-  const cmd = parent.command(name).description(desc);
+  const cmd = new Command(name).description(desc);
   funcAbiItem.inputs.forEach((input) => {
     const argDesc = funcAbiItem._metadata?.params?.[input.name] || `${input.type} parameter`;
     cmd.argument(`<${input.name}>`, argDesc);
@@ -104,7 +143,7 @@ export function defineCommandFromFunction(
   if (funcAbiItem.stateMutability === "view" || funcAbiItem.stateMutability === "pure") {
     cmd
       .option("-u, --universe <universe>", "Universe name", "local")
-      .action(readContract(funcAbiItem, nonFuncAbiItems, config));
+      .action(readContract(funcAbiItem, nonFuncAbiItems, context));
   } else {
     cmd
       .option("-u, --universe <universe>", "Universe name", "local")
@@ -112,12 +151,12 @@ export function defineCommandFromFunction(
       .option("-k, --private-key <key>", "Private key to sign the transaction")
       .option("-p, --password [password]", "Password to decrypt the private key")
       .option("-f, --password-file <file>", "File containing the password to decrypt the private key")
-      .action(writeContract(funcAbiItem, nonFuncAbiItems, config));
+      .action(writeContract(funcAbiItem, nonFuncAbiItems, context));
   }
   return cmd;
 }
 
-function checkArguments(raw: any[], func: ContractFunction): any[] {
+export function checkArguments(raw: any[], func: ContractFunction): any[] {
   return raw.map((rawArg, index) => {
     const abiParam = func.inputs[index];
     const pt = abiParam?.type;
@@ -132,10 +171,10 @@ function checkArguments(raw: any[], func: ContractFunction): any[] {
   });
 }
 
-function writeContract(
+export function writeContract(
   func: ContractFunction,
   nonFuncAbiItems: ContractFunction[],
-  cmdConf: CommandConfig
+  context: CommandContext
 ): (this: Command) => Promise<void> {
   return async function (this: Command) {
     const opts = this.opts();
@@ -143,7 +182,7 @@ function writeContract(
     const args = checkArguments(this.args, func);
     const publicClient = getPublicClient(uniConf);
     const walletClient = await getWalletClient(uniConf, opts);
-    const contractAddress = getContractAddress(uniConf, cmdConf, func, args);
+    const contractAddress = getContractAddress(uniConf, context, func, args);
     console.log({ contractAddress, args, opts, config: uniConf });
 
     const { request } = await publicClient.simulateContract({
@@ -177,14 +216,14 @@ function writeContract(
 function readContract(
   func: ContractFunction,
   nonFuncAbiItems: ContractFunction[],
-  cmdConf: CommandConfig
+  context: CommandContext
 ): (this: Command) => Promise<void> {
   return async function (this: Command) {
     const opts = this.opts();
     const uniConf: UniverseConfig = getUniverseConfig(opts);
     const publicClient = getPublicClient(uniConf);
     const args = checkArguments(this.args, func);
-    const contractAddress = getContractAddress(uniConf, cmdConf, func, args);
+    const contractAddress = getContractAddress(uniConf, context, func, args);
 
     console.log({ contractAddress, args, opts, config: uniConf });
     console.log(`Calling view function on ${func.name}...`);
