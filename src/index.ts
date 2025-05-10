@@ -7,6 +7,8 @@ import pkg from "../package.json" assert { type: "json" };
 
 await main();
 
+// ai! define a type/interface to hold all funcs and nonFuncs, and write a function to load them all
+
 async function main() {
   const program = new Command()
     .name("every-cli")
