@@ -19,33 +19,45 @@ function sort(a: ContractFunction, b: ContractFunction): number {
   return a.stateMutability == b.stateMutability ? 0 : a.stateMutability == "view" ? 1 : -1;
 }
 
-// ai! refactor to make this function only add level2 commands, move level1 cmd insertion outside
 export function defineSubCommands(parent: Command, config: CommandConfig): Command {
   try {
     const { name, interface: intfAbiFile, contract: implAbiFile, rename, filter } = config;
     const nonFuncAbiItems = implAbiFile ? extractErrorsAndEvents(loadAbi(implAbiFile)) : [];
     let funcAbiItems = extractFunctions(loadAbi(intfAbiFile));
     const filtered = filter ? funcAbiItems.filter(filter) : funcAbiItems;
-    const contractName = intfAbiFile;
-    // Create the main command for this contract
-    const level1CmdName = parent.command(name).description(`${name} commands for ${contractName}`);
-    // Track command names to handle duplicates, level2CmdName => count
-    const level2CmdCounts = new Map<string, number>();
-    // Generate a command for each function
-    filtered.sort(sort).forEach((funcAbiItem: ContractFunction) => {
-      let cmdName = rename ? rename(funcAbiItem.name) : funcAbiItem.name;
-      let count: number = level2CmdCounts.get(cmdName) || 0;
-      let postfix = count > 0 ? `${count + 1}` : "";
-      level2CmdCounts.set(cmdName, count + 1);
-      const level2CmdName = `${cmdName}${postfix}`;
-      defineCommandFromFunction(level1CmdName, level2CmdName, funcAbiItem, nonFuncAbiItems, config);
-    });
+    
+    // Add level2 commands to the parent command
+    addLevel2Commands(parent, filtered, nonFuncAbiItems, config, rename);
 
     return parent;
   } catch (error) {
     console.error(`Error configuring subcommand ${config.name} from ${config.interface}:`, error);
     return parent;
   }
+}
+
+/**
+ * Adds level2 commands to a parent command
+ */
+function addLevel2Commands(
+  parentCmd: Command, 
+  funcAbiItems: ContractFunction[], 
+  nonFuncAbiItems: ContractFunction[],
+  config: CommandConfig,
+  rename?: (name: string) => string
+): void {
+  // Track command names to handle duplicates, level2CmdName => count
+  const level2CmdCounts = new Map<string, number>();
+  
+  // Generate a command for each function
+  funcAbiItems.sort(sort).forEach((funcAbiItem: ContractFunction) => {
+    let cmdName = rename ? rename(funcAbiItem.name) : funcAbiItem.name;
+    let count: number = level2CmdCounts.get(cmdName) || 0;
+    let postfix = count > 0 ? `${count + 1}` : "";
+    level2CmdCounts.set(cmdName, count + 1);
+    const level2CmdName = `${cmdName}${postfix}`;
+    defineCommandFromFunction(parentCmd, level2CmdName, funcAbiItem, nonFuncAbiItems, config);
+  });
 }
 
 export function extractErrorsAndEvents(abi: any): ContractFunction[] {

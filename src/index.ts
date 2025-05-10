@@ -44,7 +44,16 @@ async function main() {
     { name: "object", interface: "ISet" },
   ];
 
-  commandConfigs.forEach((config) => defineSubCommands(program, config));
+  // Create level1 commands and add level2 commands to them
+  commandConfigs.forEach((config) => {
+    // Create the main command for this contract
+    const level1Cmd = program
+      .command(config.name)
+      .description(`${config.name} commands for ${config.interface}`);
+    
+    // Add level2 commands to the level1 command
+    defineSubCommands(level1Cmd, config);
+  });
 
   try {
     await program.parseAsync();
