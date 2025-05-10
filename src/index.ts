@@ -16,59 +16,58 @@ interface ContractAbi {
 }
 
 // Function to load all contract ABIs
-// ai! in a map/dict instead of an array
-function loadContractAbis(): ContractAbi[] {
-  return [
-    {
+function loadContractAbis(): Record<string, ContractAbi> {
+  return {
+    kind: {
       name: "kind",
       interface: "IKindRegistry",
       implementation: "KindRegistry",
       functions: loadAbiFunctions("IKindRegistry"),
       nonFunctions: loadAbiNonFunctions("KindRegistry"),
     },
-    {
+    set: {
       name: "set",
       interface: "ISetRegistry",
       implementation: "SetRegistry",
       functions: loadAbiFunctions("ISetRegistry"),
       nonFunctions: loadAbiNonFunctions("SetRegistry"),
     },
-    {
+    relation: {
       name: "relation",
       interface: "IOmniRegistry",
       implementation: "OmniRegistry",
       functions: loadAbiFunctions("IOmniRegistry").filter(startsWith("relation")),
       nonFunctions: loadAbiNonFunctions("OmniRegistry"),
     },
-    {
+    unique: {
       name: "unique",
       interface: "IElementRegistry",
       implementation: "ElementRegistry",
       functions: loadAbiFunctions("IElementRegistry").filter(startsWith("unique")),
       nonFunctions: loadAbiNonFunctions("ElementRegistry"),
     },
-    {
+    value: {
       name: "value",
       interface: "IElementRegistry",
       implementation: "ElementRegistry",
       functions: loadAbiFunctions("IElementRegistry").filter(startsWith("value")),
       nonFunctions: loadAbiNonFunctions("ElementRegistry"),
     },
-    {
+    mintpolicy: {
       name: "mintpolicy",
       interface: "IObjectMinter",
       implementation: "ObjectMinter",
       functions: loadAbiFunctions("IObjectMinter"),
       nonFunctions: loadAbiNonFunctions("ObjectMinter"),
     },
-    {
+    object: {
       name: "object",
       interface: "ISet",
       implementation: "ISet",
       functions: loadAbiFunctions("ISet"),
       nonFunctions: loadAbiNonFunctions("ISet"),
     },
-  ];
+  };
 }
 
 await main();
@@ -83,13 +82,13 @@ async function main() {
   const contractAbis = loadContractAbis();
 
   // Create commands for each contract
-  for (const contractAbi of contractAbis) {
-    const cmd = program.command(contractAbi.name).description(`${contractAbi.name} commands`);
+  for (const [name, contractAbi] of Object.entries(contractAbis)) {
+    const cmd = program.command(name).description(`${name} commands`);
 
     contractAbi.functions
       .map((func) =>
         generateCommand(func, contractAbi.nonFunctions, {
-          parentCmd: contractAbi.name,
+          parentCmd: name,
           contract: contractAbi.implementation,
         })
       )
