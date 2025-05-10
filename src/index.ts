@@ -16,6 +16,7 @@ interface ContractAbi {
 }
 
 // Function to load all contract ABIs
+// ai! in a map/dict instead of an array
 function loadContractAbis(): ContractAbi[] {
   return [
     {
@@ -80,20 +81,18 @@ async function main() {
 
   // Load all contract ABIs
   const contractAbis = loadContractAbis();
-  
+
   // Create commands for each contract
   for (const contractAbi of contractAbis) {
     const cmd = program.command(contractAbi.name).description(`${contractAbi.name} commands`);
-    
+
     contractAbi.functions
-      .map((func) => generateCommand(
-        func, 
-        contractAbi.nonFunctions, 
-        { 
-          parentCmd: contractAbi.name, 
-          contract: contractAbi.implementation 
-        }
-      ))
+      .map((func) =>
+        generateCommand(func, contractAbi.nonFunctions, {
+          parentCmd: contractAbi.name,
+          contract: contractAbi.implementation,
+        })
+      )
       .forEach((subCmd) => cmd.addCommand(subCmd));
   }
 
