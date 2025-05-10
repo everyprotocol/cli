@@ -17,47 +17,56 @@ async function main() {
   const kindFuncs = loadAbiFunctions("IKindRegistry");
   const kindNonFuncs = loadAbiNonFunctions("KindRegistry");
   kindFuncs
-    .map((func) => generateCommand(func, kindNonFuncs, { parentCmd: "kind", contract: "IKindRegistry" }))
+    .map((func) => generateCommand(func, kindNonFuncs, { parentCmd: "kind", contract: "KindRegistry" }))
     .forEach((cmd) => kindCmd.addCommand(cmd));
 
-  // ai! rewrite the following code like the above
+  // Set command
+  const setCmd = program.command("set").description("set commands");
+  const setFuncs = loadAbiFunctions("ISetRegistry");
+  const setNonFuncs = loadAbiNonFunctions("SetRegistry");
+  setFuncs
+    .map((func) => generateCommand(func, setNonFuncs, { parentCmd: "set", contract: "SetRegistry" }))
+    .forEach((cmd) => setCmd.addCommand(cmd));
 
-  const commandConfigs: CommandConfig[] = [
-    { name: "kind", interface: "IKindRegistry", contract: "KindRegistry", rename: lstrip("kind") },
-    { name: "set", interface: "ISetRegistry", contract: "SetRegistry", rename: lstrip("set") },
-    {
-      name: "relation",
-      interface: "IOmniRegistry",
-      contract: "OmniRegistry",
-      filter: startsWith("relation"),
-      rename: lstrip("relation"),
-    },
-    {
-      name: "unique",
-      interface: "IElementRegistry",
-      contract: "ElementRegistry",
-      filter: startsWith("unique"),
-      rename: lstrip("unique"),
-    },
-    {
-      name: "value",
-      interface: "IElementRegistry",
-      contract: "ElementRegistry",
-      filter: startsWith("value"),
-      rename: lstrip("value"),
-    },
-    { name: "mintpolicy", interface: "IObjectMinter", contract: "ObjectMinter" },
-    { name: "object", interface: "ISet" },
-  ];
+  // Relation command
+  const relationCmd = program.command("relation").description("relation commands");
+  const relationFuncs = loadAbiFunctions("IOmniRegistry").filter(startsWith("relation"));
+  const relationNonFuncs = loadAbiNonFunctions("OmniRegistry");
+  relationFuncs
+    .map((func) => generateCommand(func, relationNonFuncs, { parentCmd: "relation", contract: "OmniRegistry" }))
+    .forEach((cmd) => relationCmd.addCommand(cmd));
 
-  // Create level1 commands and add level2 commands to them
-  commandConfigs.forEach((config) => {
-    // Create the main command for this contract
-    const level1Cmd = program.command(config.name).description(`${config.name} commands for ${config.interface}`);
+  // Unique command
+  const uniqueCmd = program.command("unique").description("unique commands");
+  const uniqueFuncs = loadAbiFunctions("IElementRegistry").filter(startsWith("unique"));
+  const uniqueNonFuncs = loadAbiNonFunctions("ElementRegistry");
+  uniqueFuncs
+    .map((func) => generateCommand(func, uniqueNonFuncs, { parentCmd: "unique", contract: "ElementRegistry" }))
+    .forEach((cmd) => uniqueCmd.addCommand(cmd));
 
-    // Add level2 commands to the level1 command
-    defineSubCommands(level1Cmd, config);
-  });
+  // Value command
+  const valueCmd = program.command("value").description("value commands");
+  const valueFuncs = loadAbiFunctions("IElementRegistry").filter(startsWith("value"));
+  const valueNonFuncs = loadAbiNonFunctions("ElementRegistry");
+  valueFuncs
+    .map((func) => generateCommand(func, valueNonFuncs, { parentCmd: "value", contract: "ElementRegistry" }))
+    .forEach((cmd) => valueCmd.addCommand(cmd));
+
+  // Mintpolicy command
+  const mintpolicyCmd = program.command("mintpolicy").description("mintpolicy commands");
+  const mintpolicyFuncs = loadAbiFunctions("IObjectMinter");
+  const mintpolicyNonFuncs = loadAbiNonFunctions("ObjectMinter");
+  mintpolicyFuncs
+    .map((func) => generateCommand(func, mintpolicyNonFuncs, { parentCmd: "mintpolicy", contract: "ObjectMinter" }))
+    .forEach((cmd) => mintpolicyCmd.addCommand(cmd));
+
+  // Object command
+  const objectCmd = program.command("object").description("object commands");
+  const objectFuncs = loadAbiFunctions("ISet");
+  const objectNonFuncs = loadAbiNonFunctions("ISet");
+  objectFuncs
+    .map((func) => generateCommand(func, objectNonFuncs, { parentCmd: "object", contract: "ISet" }))
+    .forEach((cmd) => objectCmd.addCommand(cmd));
 
   try {
     await program.parseAsync();
