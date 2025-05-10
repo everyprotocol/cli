@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 
 import { Command } from "commander";
-import { defineSubCommands } from "./autocmd";
-import { CommandConfig, ContractFunction } from "./types";
+import { defineSubCommands, generateCommand, loadAbiFunctions, loadAbiNonFunctions } from "./autocmd";
+import { CommandConfig, ContractFunction, CommandContext } from "./types";
 import pkg from "../package.json" assert { type: "json" };
 
 await main();
@@ -14,7 +14,13 @@ async function main() {
     .version(pkg.version);
 
   const kindCmd = program.command("kind").description("kind commands");
-  const setCmd = program.command(nameAndArgs).description(str);
+  const kindFuncs = loadAbiFunctions("IKindRegistry");
+  const kindNonFuncs = loadAbiNonFunctions("KindRegistry");
+  kindFuncs
+    .map((func) => generateCommand(func, kindNonFuncs, { parentCmd: "kind", contract: "IKindRegistry" }))
+    .forEach((cmd) => kindCmd.addCommand(cmd));
+
+  // ai! rewrite the following code like the above
 
   const commandConfigs: CommandConfig[] = [
     { name: "kind", interface: "IKindRegistry", contract: "KindRegistry", rename: lstrip("kind") },
@@ -47,10 +53,8 @@ async function main() {
   // Create level1 commands and add level2 commands to them
   commandConfigs.forEach((config) => {
     // Create the main command for this contract
-    const level1Cmd = program
-      .command(config.name)
-      .description(`${config.name} commands for ${config.interface}`);
-    
+    const level1Cmd = program.command(config.name).description(`${config.name} commands for ${config.interface}`);
+
     // Add level2 commands to the level1 command
     defineSubCommands(level1Cmd, config);
   });
