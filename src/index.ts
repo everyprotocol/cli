@@ -3,61 +3,45 @@
 import { Command } from "commander";
 import { defineSubCommands } from "./autocmd";
 import { CommandConfig, ContractFunction } from "./types";
-import fs from "fs";
-import path from "path";
+import pkg from "../package.json" assert { type: "json" };
 
 await main();
 
 async function main() {
-  // Read version from package.json
-  let packageJson;
-  try {
-    // First try to find package.json relative to the current script
-    const scriptDir = path.dirname(new URL(import.meta.url).pathname);
-    const packageJsonPath = path.resolve(scriptDir, "..", "package.json");
-    packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
-  } catch (error) {
-    try {
-      // Fallback to current working directory
-      const packageJsonPath = path.resolve(process.cwd(), "package.json");
-      packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
-    } catch (error) {
-      // If all else fails, use a default version
-      packageJson = { version: "0.1.0" };
-    }
-  }
-  
   const program = new Command()
     .name("every-cli")
     .description("CLI for interacting with Every Protocol contracts")
-    .version(packageJson.version);
+    .version(pkg.version);
+
+  const kindCmd = program.command("kind").description("kind commands");
+  const setCmd = program.command(nameAndArgs).description(str);
 
   const commandConfigs: CommandConfig[] = [
-    { name: "kind", intfAbi: "IKindRegistry", implAbi: "KindRegistry", rename: lstrip("kind") },
-    { name: "set", intfAbi: "ISetRegistry", implAbi: "SetRegistry", rename: lstrip("set") },
+    { name: "kind", interface: "IKindRegistry", contract: "KindRegistry", rename: lstrip("kind") },
+    { name: "set", interface: "ISetRegistry", contract: "SetRegistry", rename: lstrip("set") },
     {
       name: "relation",
-      intfAbi: "IOmniRegistry",
-      implAbi: "OmniRegistry",
+      interface: "IOmniRegistry",
+      contract: "OmniRegistry",
       filter: startsWith("relation"),
       rename: lstrip("relation"),
     },
     {
       name: "unique",
-      intfAbi: "IElementRegistry",
-      implAbi: "ElementRegistry",
+      interface: "IElementRegistry",
+      contract: "ElementRegistry",
       filter: startsWith("unique"),
       rename: lstrip("unique"),
     },
     {
       name: "value",
-      intfAbi: "IElementRegistry",
-      implAbi: "ElementRegistry",
+      interface: "IElementRegistry",
+      contract: "ElementRegistry",
       filter: startsWith("value"),
       rename: lstrip("value"),
     },
-    { name: "mintpolicy", intfAbi: "IObjectMinter", implAbi: "ObjectMinter" },
-    { name: "object", intfAbi: "ISet" },
+    { name: "mintpolicy", interface: "IObjectMinter", contract: "ObjectMinter" },
+    { name: "object", interface: "ISet" },
   ];
 
   commandConfigs.forEach((config) => defineSubCommands(program, config));

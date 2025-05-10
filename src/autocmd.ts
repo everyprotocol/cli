@@ -19,9 +19,10 @@ function sort(a: ContractFunction, b: ContractFunction): number {
   return a.stateMutability == b.stateMutability ? 0 : a.stateMutability == "view" ? 1 : -1;
 }
 
+// ai! refactor to make this function only add level2 commands, move level1 cmd insertion outside
 export function defineSubCommands(parent: Command, config: CommandConfig): Command {
   try {
-    const { name, intfAbi: intfAbiFile, implAbi: implAbiFile, rename, filter } = config;
+    const { name, interface: intfAbiFile, contract: implAbiFile, rename, filter } = config;
     const nonFuncAbiItems = implAbiFile ? extractErrorsAndEvents(loadAbi(implAbiFile)) : [];
     let funcAbiItems = extractFunctions(loadAbi(intfAbiFile));
     const filtered = filter ? funcAbiItems.filter(filter) : funcAbiItems;
@@ -37,12 +38,12 @@ export function defineSubCommands(parent: Command, config: CommandConfig): Comma
       let postfix = count > 0 ? `${count + 1}` : "";
       level2CmdCounts.set(cmdName, count + 1);
       const level2CmdName = `${cmdName}${postfix}`;
-      defineCommandFromFunction(level1CmdName, level2CmdName, funcAbiItem, nonFuncAbiItems, contractName);
+      defineCommandFromFunction(level1CmdName, level2CmdName, funcAbiItem, nonFuncAbiItems, config);
     });
 
     return parent;
   } catch (error) {
-    console.error(`Error configuring subcommand ${config.name} from ${config.intfAbi}:`, error);
+    console.error(`Error configuring subcommand ${config.name} from ${config.interface}:`, error);
     return parent;
   }
 }
@@ -79,7 +80,7 @@ export function defineCommandFromFunction(
   name: string,
   funcAbiItem: ContractFunction,
   nonFuncAbiItems: ContractFunction[],
-  contract: string
+  config: CommandConfig
 ): Command {
   let desc = funcAbiItem._metadata?.notice || `Call ${funcAbiItem.name} function`;
   const cmd = parent.command(name).description(desc);
@@ -91,7 +92,7 @@ export function defineCommandFromFunction(
   if (funcAbiItem.stateMutability === "view" || funcAbiItem.stateMutability === "pure") {
     cmd
       .option("-u, --universe <universe>", "Universe name", "local")
-      .action(readContract(funcAbiItem, nonFuncAbiItems, contract));
+      .action(readContract(funcAbiItem, nonFuncAbiItems, config));
   } else {
     cmd
       .option("-u, --universe <universe>", "Universe name", "local")
@@ -99,7 +100,7 @@ export function defineCommandFromFunction(
       .option("-k, --private-key <key>", "Private key to sign the transaction")
       .option("-p, --password [password]", "Password to decrypt the private key")
       .option("-f, --password-file <file>", "File containing the password to decrypt the private key")
-      .action(writeContract(funcAbiItem, nonFuncAbiItems, contract));
+      .action(writeContract(funcAbiItem, nonFuncAbiItems, config));
   }
   return cmd;
 }
@@ -122,16 +123,16 @@ function checkArguments(raw: any[], func: ContractFunction): any[] {
 function writeContract(
   func: ContractFunction,
   nonFuncAbiItems: ContractFunction[],
-  contract: string
+  cmdConf: CommandConfig
 ): (this: Command) => Promise<void> {
   return async function (this: Command) {
     const opts = this.opts();
-    const config: UniverseConfig = getUniverseConfig(opts);
+    const uniConf: UniverseConfig = getUniverseConfig(opts);
     const args = checkArguments(this.args, func);
-    const publicClient = getPublicClient(config);
-    const walletClient = await getWalletClient(config, opts);
-    const contractAddress = getContractAddress(config, contract, args);
-    console.log({ contractAddress, args, opts, config });
+    const publicClient = getPublicClient(uniConf);
+    const walletClient = await getWalletClient(uniConf, opts);
+    const contractAddress = getContractAddress(uniConf, cmdConf, func, args);
+    console.log({ contractAddress, args, opts, config: uniConf });
 
     const { request } = await publicClient.simulateContract({
       address: contractAddress,
@@ -144,74 +145,36 @@ function writeContract(
     console.log(`Transaction sent: ${hash}`);
     console.log("Waiting for transaction to be mined...");
     const receipt = await publicClient.waitForTransactionReceipt({ hash });
-    console.log("Transaction mined:", receipt);
-
-    // Parse and display events from the transaction receipt
+    console.log("Transaction mined");
     if (receipt.logs && receipt.logs.length > 0) {
       console.log("\nEvents emitted:");
-      
-      // Use viem's parseEventLogs utility for better event handling
       const parsedLogs = parseEventLogs({
         abi: [func, ...nonFuncAbiItems],
         logs: receipt.logs,
       });
-      
-      if (parsedLogs.length > 0) {
-        for (const log of parsedLogs) {
-          console.log(`- ${log.eventName}`);
-          for (const [key, value] of Object.entries(log.args)) {
-            if (isNaN(Number(key))) { // Skip numeric keys (array indices)
-              console.log(`  ${key}: ${formatValue(value)}`);
-            }
-          }
-        }
-      } else {
-        console.log("  No events could be decoded with the current ABI");
-      }
+      parsedLogs.forEach((log: any) => {
+        console.log({ event: log.eventName, args: log.args });
+      });
+      // console.log(parsedLogs);
     } else {
       console.log("\nNo events emitted");
     }
-
-    // For functions that return values, we would need to decode the return data
-    // This is typically not available in transaction receipts
-    // For non-view functions, return values are usually communicated via events
   };
-}
-
-// Helper function to format values for display
-function formatValue(value: any): string {
-  if (value === null || value === undefined) {
-    return "null";
-  }
-
-  if (typeof value === "bigint") {
-    return value.toString();
-  }
-
-  if (Array.isArray(value)) {
-    return `[${value.map(formatValue).join(", ")}]`;
-  }
-
-  if (typeof value === "object") {
-    return JSON.stringify(value);
-  }
-
-  return String(value);
 }
 
 function readContract(
   func: ContractFunction,
   nonFuncAbiItems: ContractFunction[],
-  contract: string
+  cmdConf: CommandConfig
 ): (this: Command) => Promise<void> {
   return async function (this: Command) {
     const opts = this.opts();
-    const config: UniverseConfig = getUniverseConfig(opts);
-    const publicClient = getPublicClient(config);
+    const uniConf: UniverseConfig = getUniverseConfig(opts);
+    const publicClient = getPublicClient(uniConf);
     const args = checkArguments(this.args, func);
-    const contractAddress = getContractAddress(config, contract, args);
+    const contractAddress = getContractAddress(uniConf, cmdConf, func, args);
 
-    console.log({ contractAddress, args, opts, config });
+    console.log({ contractAddress, args, opts, config: uniConf });
     console.log(`Calling view function on ${func.name}...`);
     const result = await publicClient.readContract({
       address: contractAddress,
