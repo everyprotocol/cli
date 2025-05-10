@@ -4,7 +4,7 @@ import os from "os";
 import { createPublicClient, http, createWalletClient, type PublicClient, type WalletClient, type Address } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { Wallet } from "ethers";
-import type { UniverseConfig } from "./types";
+import type { UniverseConfig, CommandConfig, ContractFunction } from "./types";
 import { OptionValues } from "commander";
 import promptSync from "prompt-sync";
 
@@ -12,7 +12,7 @@ const prompt = promptSync({ sigint: true });
 
 export function getPublicClient(config: UniverseConfig): PublicClient {
   return createPublicClient({
-    transport: http(config.rpc_url),
+    transport: http(config.rpcUrl),
   });
 }
 
@@ -55,17 +55,26 @@ export async function getWalletClient(config: UniverseConfig, options: OptionVal
 
   return createWalletClient({
     account,
-    transport: http(config.rpc_url),
+    transport: http(config.rpcUrl),
   });
 }
 
-
-export function getContractAddress(config: UniverseConfig, contract: string, args: any[]): Address {
-  const contractKey = contract
-    .replace(/^I/, "")
-    .replace(/([A-Z])/g, "_$1")
-    .toLowerCase()
-    .replace(/^_/, "");
-  const address = config.contracts[contractKey];
-  return address as Address;
+export function getContractAddress(
+  uniConf: UniverseConfig,
+  cmdConf: CommandConfig,
+  func: ContractFunction,
+  args: any[]
+): Address {
+  if (cmdConf.contract) {
+    return uniConf.contracts[cmdConf.contract] as Address;
+  } else {
+    throw new Error(`getContractAddress not implemented for: ${JSON.stringify(cmdConf)}`);
+  }
+  // const contractKey = contract
+  //   .replace(/^I/, "")
+  //   .replace(/([A-Z])/g, "_$1")
+  //   .toLowerCase()
+  //   .replace(/^_/, "");
+  // const address = uniConf.contracts[contractKey];
+  // return address as Address;
 }

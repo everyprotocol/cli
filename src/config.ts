@@ -1,92 +1,63 @@
 import fs from "fs";
 import path from "path";
 import os from "os";
-import dotenv from "dotenv";
 import { parse as parseTOML } from "@iarna/toml";
 import type { EveryConfig, UniverseConfig } from "./types";
 import { OptionValues } from "commander";
 
-// Cache to avoid repeated loading
+// Cache
 let CONFIG_CACHED: EveryConfig | null = null;
 
 export function getUniverseConfig(opts: OptionValues): UniverseConfig {
   const config = loadProtocolConfig();
   const universeName = opts.universe || "local";
   const universe = config.universes[universeName];
-
   if (!universe) {
-    const availableUniverses = Object.keys(config.universes).join(", ");
-    throw Error(`Universe "${universeName}" not found in configuration. Available universes: ${availableUniverses}`);
+    const available = Object.keys(config.universes).join(", ");
+    throw new Error(`Universe "${universeName}" not found. Available: ${available}`);
   }
-
   return universe;
 }
 
 function loadProtocolConfig(): EveryConfig {
-  if (CONFIG_CACHED) {
-    return CONFIG_CACHED;
-  }
+  if (CONFIG_CACHED) return CONFIG_CACHED;
 
-  const configs = new Map<string, UniverseConfig>();
-  let configData: EveryConfig | null = null;
-
-  const configLocations = [
-    path.resolve(process.cwd(), ".every.toml"),
-    path.resolve(os.homedir(), ".every.toml"),
+  const configPaths = [
     path.resolve(__dirname, "../.every.toml"),
+    path.resolve(os.homedir(), ".every.toml"),
+    path.resolve(process.cwd(), ".every.toml"),
   ];
 
-  // Process TOML config files
-  for (const configPath of configLocations) {
-    if (fs.existsSync(configPath)) {
-      try {
-        const parsedConfig = parseTOML(fs.readFileSync(configPath, "utf8")) as any;
-
-        if (configData) {
-          // Merge with existing config
-          if (parsedConfig.universes) {
-            configData.universes = { ...configData.universes, ...parsedConfig.universes };
-          }
-          if (parsedConfig.general) {
-            configData.general = { ...configData.general, ...parsedConfig.general };
-          }
-        } else {
-          // First config found
-          configData = {
-            general: {
-              default_universe: parsedConfig.general?.default_universe || "mainnet",
-            },
-            universes: parsedConfig.universes || {},
-          };
-        }
-        console.log(`Loaded configuration from ${configPath}`);
-      } catch (error) {
-        console.warn(`Failed to load ${configPath}:`, error);
-      }
-    }
-  }
-
-  // Process loaded configuration
-  if (configData?.universes) {
-    for (const [name, universe] of Object.entries(configData.universes)) {
-      configs.set(name, {
-        name: universe.name,
-        rpc_url: universe.rpc_url,
-        contracts: universe.contracts || {},
-      });
-    }
-  }
-
-  if (configs.size === 0) {
-    console.warn("No universe configurations found. Please create a .every.toml file.");
-  }
-
-  // Convert Map to EveryConfig format
-  const defaultUniverse = "local";
-  CONFIG_CACHED = {
-    general: { default_universe: defaultUniverse },
-    universes: Object.fromEntries(configs.entries()),
+  const mergedConfig: EveryConfig = {
+    universes: {},
   };
 
+  for (const configPath of configPaths) {
+    if (!fs.existsSync(configPath)) continue;
+
+    try {
+      const raw = fs.readFileSync(configPath, "utf8");
+      const parsed = parseTOML(raw) as any;
+      if (parsed.universes) {
+        for (const [name, uni] of Object.entries<any>(parsed.universes)) {
+          console.log(name, uni);
+          mergedConfig.universes[name] = {
+            name: name,
+            rpcUrl: uni.rpc_url,
+            contracts: uni.contracts || {},
+          };
+        }
+      }
+      console.log(`Loaded configuration from ${configPath}`);
+    } catch (err) {
+      console.warn(`Failed to load ${configPath}:`, err);
+    }
+  }
+
+  if (Object.keys(mergedConfig.universes).length === 0) {
+    console.warn("No universe configurations found");
+  }
+
+  CONFIG_CACHED = mergedConfig;
   return CONFIG_CACHED;
 }

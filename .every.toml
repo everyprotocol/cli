@@ -1,28 +1,13 @@
 # Default configuration for Every CLI
 # This file can be overridden by placing a .every.toml file in your home directory
 # or in the current working directory
+[universes.local]
+name = "local"
+rpc_url = "http://127.0.0.1:8545"
 
-[general]
-default_universe = "testnet"
-
-[universes.mainnet]
-name = "mainnet"
-rpc_url = "https://mainnet.infura.io/v3/YOUR_INFURA_KEY"
-
-[universes.mainnet.contracts]
-IElementRegistry = "0x1234567890123456789012345678901234567890"
-ISetRegistry = "0x2345678901234567890123456789012345678901"
-IKindRegistry = "0x3456789012345678901234567890123456789012"
-IOmniRegistry = "0x4567890123456789012345678901234567890123"
-IObjectMinter = "0x5678901234567890123456789012345678901234"
-
-[universes.testnet]
-name = "testnet"
-rpc_url = "https://sepolia.infura.io/v3/YOUR_INFURA_KEY"
-
-[universes.testnet.contracts]
-IElementRegistry = "0x9876543210987654321098765432109876543210"
-ISetRegistry = "0x8765432109876543210987654321098765432109"
-IKindRegistry = "0x7654321098765432109876543210987654321098"
-IOmniRegistry = "0x6543210987654321098765432109876543210987"
-IObjectMinter = "0x5432109876543210987654321098765432109876"
+[universes.local.contracts]
+SetRegistry = "0x854C35Fd2b65fE9fcE71dddE91De8c3e1A7Dc8Ae"
+OmniRegistry = "0x4b7fc108F2c4fCDD990240448D2eED8034713c7D"
+KindRegistry = "0x7A8B3E5A9c227858C5917b7de8ba1684Cd868630"
+ElementRegistry = "0x8De1EE1dbAE2Ffd1CAe1e6bA83E6cAede1461507"
+ObjectMinter = "0x12CaBC370b316F247126F3Fab529Ee25e03aE226"

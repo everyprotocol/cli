@@ -1,9 +1,14 @@
-import { getFunctionSignature } from 'viem';
+export interface UniverseConfig {
+  name: string;
+  rpcUrl: string;
+  contracts: Record<string, string>; // contractName -> address
+}
 
-/**
- * Represents a function from a contract ABI with its documentation
- */
-export interface ContractFunctionDetail {
+export interface EveryConfig {
+  universes: Record<string, UniverseConfig>;
+}
+
+export interface ContractFunction {
   /** Original ABI function object with standard fields */
   type: string;
   name: string;
@@ -20,11 +25,6 @@ export interface ContractFunctionDetail {
     components?: any[];
   }>;
   stateMutability: string;
-
-  /** Additional fields for CLI processing */
-  contractName: string;
-  commandPath: string[];
-
   /** Merged metadata from userdoc and devdoc */
   _metadata?: {
     signature?: string;
@@ -36,27 +36,8 @@ export interface ContractFunctionDetail {
 
 export interface CommandConfig {
   name: string;
-  abiFile: string;
+  interface: string;
+  contract?: string;
   rename?: (func: string) => string;
-  filter?: (func: ContractFunctionDetail) => boolean;
-}
-
-export interface UniverseConfig {
-  name: string;
-  rpcUrl: string;
-  contracts: Record<string, string>; // contractName -> address
-}
-
-export interface EveryConfig {
-  general: {
-    default_universe: string;
-  };
-  universes: Record<
-    string,
-    {
-      name: string;
-      rpc_url: string;
-      contracts: Record<string, string>;
-    }
-  >;
+  filter?: (func: ContractFunction) => boolean;
 }

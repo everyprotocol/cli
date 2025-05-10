@@ -25,7 +25,7 @@ export function defineSubCommands(parent: Command, config: CommandConfig): Comma
     const nonFuncAbiItems = implAbiFile ? extractErrorsAndEvents(loadAbi(implAbiFile)) : [];
     let funcAbiItems = extractFunctions(loadAbi(intfAbiFile));
     const filtered = filter ? funcAbiItems.filter(filter) : funcAbiItems;
-    
+
     // Add level2 commands to the parent command
     addLevel2Commands(parent, filtered, nonFuncAbiItems, config, rename);
 
@@ -40,15 +40,15 @@ export function defineSubCommands(parent: Command, config: CommandConfig): Comma
  * Adds level2 commands to a parent command
  */
 function addLevel2Commands(
-  parentCmd: Command, 
-  funcAbiItems: ContractFunction[], 
+  parent: Command,
+  funcAbiItems: ContractFunction[],
   nonFuncAbiItems: ContractFunction[],
   config: CommandConfig,
   rename?: (name: string) => string
 ): void {
   // Track command names to handle duplicates, level2CmdName => count
   const level2CmdCounts = new Map<string, number>();
-  
+
   // Generate a command for each function
   funcAbiItems.sort(sort).forEach((funcAbiItem: ContractFunction) => {
     let cmdName = rename ? rename(funcAbiItem.name) : funcAbiItem.name;
@@ -56,7 +56,7 @@ function addLevel2Commands(
     let postfix = count > 0 ? `${count + 1}` : "";
     level2CmdCounts.set(cmdName, count + 1);
     const level2CmdName = `${cmdName}${postfix}`;
-    defineCommandFromFunction(parentCmd, level2CmdName, funcAbiItem, nonFuncAbiItems, config);
+    defineCommandFromFunction(parent, level2CmdName, funcAbiItem, nonFuncAbiItems, config);
   });
 }
 
