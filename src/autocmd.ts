@@ -130,9 +130,10 @@ export function extractFunctions(abi: any): ContractFunction[] {
 export function generateCommand(
   funcAbiItem: ContractFunction,
   nonFuncAbiItems: ContractFunction[],
-  context: CommandContext
+  context: CommandContext,
+  commandName?: string
 ): Command {
-  const name = funcAbiItem.name;
+  const name = commandName || funcAbiItem.name;
   let desc = funcAbiItem._metadata?.notice || `Call ${funcAbiItem.name} function`;
   const cmd = new Command(name).description(desc);
   funcAbiItem.inputs.forEach((input) => {
