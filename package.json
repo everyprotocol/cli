@@ -4,14 +4,11 @@
   "type": "module",
   "version": "0.1.0",
   "bin": {
-    "every": "./dist/index.js",
-    "abitype": "./dist/cli/abitype.js"
+    "every": "./dist/index.js"
   },
   "scripts": {
-    "build": "bun build src/*.ts --outdir dist --target node",
+    "build": "bun build src/*.ts src/**/*.ts --outdir dist --target node",
     "clean": "rm -rf dist",
-    "start": "bun src/index.ts",
-    "dev": "bun --watch src/index.ts",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {

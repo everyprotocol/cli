@@ -22,11 +22,11 @@ export function getUniverseConfig(opts: OptionValues): UniverseConfig {
 function loadProtocolConfig(): EveryConfig {
   if (CONFIG_CACHED) return CONFIG_CACHED;
 
-  const configPaths = [
+  const configPaths = new Set([
     path.resolve(__dirname, "../.every.toml"),
     path.resolve(os.homedir(), ".every.toml"),
     path.resolve(process.cwd(), ".every.toml"),
-  ];
+  ]);
 
   const mergedConfig: EveryConfig = {
     universes: {},
@@ -40,7 +40,7 @@ function loadProtocolConfig(): EveryConfig {
       const parsed = parseTOML(raw) as any;
       if (parsed.universes) {
         for (const [name, uni] of Object.entries<any>(parsed.universes)) {
-          console.log(name, uni);
+          // console.log(name, uni);
           mergedConfig.universes[name] = {
             name: name,
             rpcUrl: uni.rpc_url,
