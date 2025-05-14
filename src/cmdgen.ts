@@ -1,11 +1,11 @@
-import { AbiFunctionDoc } from "./abi.js";
-import { Address, createPublicClient, http, parseAbi } from "viem";
+import { Address, createPublicClient, http } from "viem";
 import { CommandContext, configureCommand, CommandConfig } from "./cmds.js";
 import JSON5 from "json5";
 import { rstrip, excludes, includes, lstrip, startsWith, checkArguments } from "./utils.js";
-import { loadNonFuncAbiItems, loadFuncAbiItems, replaceAbiParamAt, insertAbiParamAt } from "./abi.js";
+import { replaceAbiParamAt, insertAbiParamAt, abi, AbiFunctionDoc } from "./abi.js";
 import { Command } from "commander";
 import { genMintCommand } from "./mint.js";
+import { genRelateCommand, genUnrelateCommand } from "./relate.js";
 
 interface SubCommands {
   kind: Command[];
@@ -17,95 +17,64 @@ interface SubCommands {
   mintpolicy: Command[];
 }
 
-const objectMinterNonFuncs = loadNonFuncAbiItems("ObjectMinter");
-const elemRegistryNonFuncs = loadNonFuncAbiItems("ElementRegistry");
-const omniRegistryNonFuncs = loadNonFuncAbiItems("OmniRegistry");
-const kindRegistryrNonFuncs = loadNonFuncAbiItems("KindRegistry");
-const setRegistryNonFuncs = loadNonFuncAbiItems("SetRegistry");
-
-const kindRegistryFuncs = loadFuncAbiItems("IKindRegistry");
-const setRegistryFuncs = loadFuncAbiItems("ISetRegistry");
-const omniRegistryFuncs = loadFuncAbiItems("IOmniRegistry");
-const elemRegistryFuncs = loadFuncAbiItems("IElementRegistry");
-const objectMinterFuncs = loadFuncAbiItems("IObjectMinter");
-const setContractFuncs = loadFuncAbiItems("ISet");
-const setRegistryAdminFuncs = loadFuncAbiItems("ISetRegistryAdmin");
-const objectMinterAdminFuncs = loadFuncAbiItems("IObjectMinterAdmin");
-
-export const readSetContractAbi = [
-  ...parseAbi(["function setContract(uint64 id) external view returns (address code)"]),
-  ...setRegistryNonFuncs,
-];
-
-export const mintAbi = [
-  ...parseAbi([
-    "function mint(address to, address set, uint64 id, bytes memory data, bytes memory auth, uint32 policy) payable",
-  ]),
-  ...objectMinterNonFuncs,
-];
-
 export function generateCommands(): SubCommands {
-  const kind = kindRegistryFuncs
-    .map(AbiToCommand({ contract: "KindRegistry", nonFuncs: kindRegistryrNonFuncs, cmdName: lstrip("kind") }))
+  const kind = abi.funcs.kindRegistry
+    .map(AbiToCommand({ contract: "KindRegistry", nonFuncs: abi.nonFuncs.kindRegistry, cmdName: lstrip("kind") }))
     .sort(byPreferredOrder);
 
   const set = [
-    ...setRegistryAdminFuncs.map(AbiToCommand(setRegistryAdminCmdConfig)),
-    ...setRegistryFuncs
+    ...abi.funcs.setRegistryAdmin.map(AbiToCommand(setRegistryAdminCmdConfig)),
+    ...abi.funcs.setRegistry
       .filter(excludes(["setRegister", "setUpdate", "setTouch", "setUpgrade"]))
-      .map(AbiToCommand({ contract: "SetRegistry", nonFuncs: setRegistryNonFuncs, cmdName: lstrip("set") })),
+      .map(AbiToCommand({ contract: "SetRegistry", nonFuncs: abi.nonFuncs.setRegistry, cmdName: lstrip("set") })),
   ].sort(byPreferredOrder);
 
-  const relation = omniRegistryFuncs
+  const relation = abi.funcs.omniRegistry
     .filter(startsWith("relation"))
     .map(
       AbiToCommand({
         contract: "OmniRegistry",
-        nonFuncs: omniRegistryNonFuncs,
+        nonFuncs: abi.nonFuncs.omniRegistry,
         cmdName: lstrip("relation"),
       })
     )
     .sort(byPreferredOrder);
 
-  const unique = elemRegistryFuncs
+  const unique = abi.funcs.elemRegistry
     .filter(startsWith("unique"))
-    .map(AbiToCommand({ contract: "ElementRegistry", nonFuncs: elemRegistryNonFuncs, cmdName: lstrip("unique") }))
+    .map(AbiToCommand({ contract: "ElementRegistry", nonFuncs: abi.nonFuncs.elemRegistry, cmdName: lstrip("unique") }))
     .sort(byPreferredOrder);
 
-  const value = elemRegistryFuncs
+  const value = abi.funcs.elemRegistry
     .filter(startsWith("value"))
-    .map(AbiToCommand({ contract: "ElementRegistry", nonFuncs: elemRegistryNonFuncs, cmdName: lstrip("value") }))
+    .map(AbiToCommand({ contract: "ElementRegistry", nonFuncs: abi.nonFuncs.elemRegistry, cmdName: lstrip("value") }))
     .sort(byPreferredOrder);
 
   const object = [
     genMintCommand(),
-    // mint functions
-    // ...objectMinterFuncs
-    //   .filter(includes(["mint"]))
-    //   .map(AbiToCommand({ contract: "ObjectMinter", nonFuncs: objectMinterNonFuncs })),
+    genRelateCommand(),
+    genUnrelateCommand(),
     // write functions
-    ...setContractFuncs
+    ...abi.funcs.setContract
       .filter(includes("update,upgrade,touch,transfer".split(",")))
       .map(AbiToCommand(setContractObjectCmdConfig)),
     // read functions
-    ...setContractFuncs
+    ...abi.funcs.setContract
       .filter(excludes("update,upgrade,touch,transfer,uri,supportsInterface".split(",")))
       .map(AbiToCommand(setContractObjectCmdConfig)),
-    ...setContractFuncs
+    ...abi.funcs.setContract
       .filter(includes("uri".split(",")))
       .map(AbiToCommand({ ...setContractObjectCmdConfig, txnPrepare: objectUriTxnPrepare })),
-    // relate/unrelate
-    ...omniRegistryFuncs
-      .filter(includes("relate,unrelate".split(",")))
-      .map(AbiToCommand({ contract: "OmniRegistry", nonFuncs: omniRegistryNonFuncs })),
   ].sort(byPreferredOrder);
 
   const mintpolicy = [
-    ...objectMinterAdminFuncs.map(AbiToCommand(objectMinterAdminCmdConfig)),
-    ...objectMinterFuncs
+    ...abi.funcs.objectMinterAdmin.map(AbiToCommand(objectMinterAdminCmdConfig)),
+    ...abi.funcs.objectMinter
       .filter(startsWith("mintPolicy"))
       .filter(excludes("mintPolicyAdd,mintPolicyEnable,mintPolicyDisable".split(",")))
-      .map(AbiToCommand({ contract: "ObjectMinter", nonFuncs: objectMinterNonFuncs, cmdName: lstrip("mintPolicy") })),
+      .map(
+        AbiToCommand({ contract: "ObjectMinter", nonFuncs: abi.nonFuncs.objectMinter, cmdName: lstrip("mintPolicy") })
+      ),
   ].sort(byPreferredOrder);
 
   return { kind, set, relation, unique, value, mintpolicy, object };
@@ -129,7 +98,7 @@ const setContractObjectCmdConfig: CommandConfig = {
     const publicClient = createPublicClient({ transport: http(ctx.conf.rpcUrl) });
     const address = (await publicClient.readContract({
       address: ctx.conf.contracts["SetRegistry"] as Address,
-      abi: readSetContractAbi,
+      abi: abi.setContract,
       functionName: "setContract",
       args: [set],
     })) as Address;
@@ -148,7 +117,7 @@ const objectUriTxnPrepare = async function (ctx: CommandContext): Promise<{
   const publicClient = createPublicClient({ transport: http(ctx.conf.rpcUrl) });
   const address = (await publicClient.readContract({
     address: ctx.conf.contracts["SetRegistry"] as Address,
-    abi: readSetContractAbi,
+    abi: abi.setContract,
     functionName: "setContract",
     args: [set],
   })) as Address;
@@ -157,7 +126,7 @@ const objectUriTxnPrepare = async function (ctx: CommandContext): Promise<{
 
 const setRegistryAdminCmdConfig: CommandConfig = {
   contract: "ISetRegistryAdmin",
-  nonFuncs: setRegistryNonFuncs,
+  nonFuncs: abi.nonFuncs.setRegistry,
   cmdName: rstrip("Set"),
   cmdAbi: function (txnAbi: AbiFunctionDoc): AbiFunctionDoc {
     return insertAbiParamAt(txnAbi, 0, {
@@ -177,7 +146,7 @@ const setRegistryAdminCmdConfig: CommandConfig = {
 
 const objectMinterAdminCmdConfig: CommandConfig = {
   contract: "IObjectMinterAdmin",
-  nonFuncs: objectMinterNonFuncs,
+  nonFuncs: abi.nonFuncs.objectMinter,
   cmdName: rstrip("MintPolicy"),
   cmdAbi: function (txnAbi: AbiFunctionDoc): AbiFunctionDoc {
     return insertAbiParamAt(txnAbi, 0, {

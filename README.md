@@ -1,4 +1,3 @@
-
 # Every CLI
 
 A command-line interface for interacting with the Every Protocol.
@@ -6,16 +5,14 @@ A command-line interface for interacting with the Every Protocol.
 ## Installation
 
 ```bash
+bun add -g @everyprotocol/every-cli
 npm install -g @everyprotocol/every-cli
 ```
 
-Or use it directly with npx:
-
-```bash
-npx @everyprotocol/every-cli
-```
-
 ## Configuration
+
+> **Note:** You normally don’t need to configure anything manually.
+> A default configuration is bundled with support for all chains officially supported by the protocol.
 
 The CLI looks for configuration in the following locations (in order of precedence):
 1. `.every.toml` in the current directory
@@ -65,7 +62,7 @@ every --help
 every object mint 17.1 0xYourAddress
 ```
 
-#### Creating a Relation Between Objects
+#### Relating objects
 
 ```bash
 every object relate 17.1 42 18.2
@@ -77,35 +74,27 @@ every object relate 17.1 42 18.2
 every object owner 17.1
 ```
 
-### Authentication
+### Signing Transactions
 
-Most write operations require authentication. You can provide your private key or use a keystore:
+Most write operations require signing with a wallet or private key. You can provide your private key or use a keystore:
 
 ```bash
-# Using a private key
-every object mint 17.1 0xRecipient --private-key 0xYourPrivateKey
+-k, --private-key <key>       Private key to sign the transaction
+-a, --account <account>       Name of the keystore to sign the transaction
+-p, --password [password]     Password to decrypt the keystore
+-f, --password-file <file>    File containing the password to decrypt the keystore
+    --foundry                 Use keystore from Foundry directory (~/.foundry/keystores)
+```
 
-# Using a keystore
+#### Using a private key
+
+```bash
+every object mint 17.1 0xRecipient --private-key 0xYourPrivateKey
+```
+#### Using a keystore
+```bash
 every object mint 17.1 0xRecipient --account myaccount
 ```
 
-## Development
-
-### Building from Source
-
-```bash
-git clone https://github.com/everyprotocol/every-cli.git
-cd every-cli
-npm install
-npm run build
-```
-
-### Running Tests
-
-```bash
-npm test
-```
-
 ## License
-
 [MIT](LICENSE)

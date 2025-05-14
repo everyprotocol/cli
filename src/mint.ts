@@ -3,7 +3,7 @@ import { defaultWriteFunctionOptions } from "./cmds.js";
 import { getClients, stringify } from "./utils.js";
 import { getUniverseConfig } from "./config.js";
 import { Address, parseEventLogs, parseUnits } from "viem";
-import { mintAbi, readSetContractAbi } from "./cmdgen.js";
+import { abi } from "./abi.js";
 
 export function genMintCommand() {
   const cmd = new Command()
@@ -31,14 +31,14 @@ async function action(this: Command) {
   const [set, id] = args0[0].split(".");
   const setContract = (await publicClient.readContract({
     address: setRegistry,
-    abi: readSetContractAbi,
+    abi: abi.setContract,
     functionName: "setContract",
     args: [BigInt(set)],
   })) as Address;
   const value = parseUnits(opts.value || "0", 18);
   const { request } = await publicClient.simulateContract({
     address: objectMinter,
-    abi: mintAbi,
+    abi: abi.mint,
     functionName: "mint",
     args: [
       args0[1] as Address,
@@ -58,15 +58,10 @@ async function action(this: Command) {
   console.log("Transaction mined");
 
   if (receipt.logs && receipt.logs.length > 0) {
-    const parsedLogs = parseEventLogs({ abi: mintAbi, logs: receipt.logs });
+    const parsedLogs = parseEventLogs({ abi: abi.mint, logs: receipt.logs });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     parsedLogs.forEach((log: any) => {
       console.log(" - Event", log.eventName, stringify(log.args));
     });
   }
 }
-
-// mint [options] <to> <set> <id> <auth> <policy>          Mint an object with allowlist proof
-//  mint2 [options] <to> <set> <id> <data> <auth> <policy>  Mint an object with allowlist proof and additional data
-//  mint3 [options] <to> <set> <id>                         Mint an object (public permission)
-//  mint4 [options] <to> <set> <id> <data>

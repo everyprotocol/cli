@@ -1,4 +1,4 @@
-import { AbiFunction, AbiError, AbiEvent } from "abitype";
+import { AbiFunction, AbiError, AbiEvent, parseAbi } from "abitype";
 import { toFunctionSignature } from "viem";
 import { AbiParameter } from "viem";
 import fs from "fs";
@@ -18,6 +18,47 @@ export interface AbiFunctionDoc extends AbiFunction {
 }
 
 export type AbiEventOrError = AbiError | AbiEvent;
+
+export const abi = {
+  nonFuncs: {
+    objectMinter: loadNonFuncAbiItems("ObjectMinter"),
+    elemRegistry: loadNonFuncAbiItems("ElementRegistry"),
+    omniRegistry: loadNonFuncAbiItems("OmniRegistry"),
+    kindRegistry: loadNonFuncAbiItems("KindRegistry"),
+    setRegistry: loadNonFuncAbiItems("SetRegistry"),
+  },
+
+  funcs: {
+    kindRegistry: loadFuncAbiItems("IKindRegistry"),
+    setRegistry: loadFuncAbiItems("ISetRegistry"),
+    omniRegistry: loadFuncAbiItems("IOmniRegistry"),
+    elemRegistry: loadFuncAbiItems("IElementRegistry"),
+    objectMinter: loadFuncAbiItems("IObjectMinter"),
+    setContract: loadFuncAbiItems("ISet"),
+    setRegistryAdmin: loadFuncAbiItems("ISetRegistryAdmin"),
+    objectMinterAdmin: loadFuncAbiItems("IObjectMinterAdmin"),
+  },
+
+  setContract: [
+    ...parseAbi(["function setContract(uint64 id) external view returns (address code)"]),
+    ...loadNonFuncAbiItems("SetRegistry"),
+  ],
+
+  mint: [
+    ...parseAbi([
+      "function mint(address to, address set, uint64 id, bytes memory data, bytes memory auth, uint32 policy) payable",
+    ]),
+    ...loadNonFuncAbiItems("ObjectMinter"),
+  ],
+
+  relation: [
+    ...parseAbi([
+      "function relate(uint256 tail, uint64 rel, uint256 head)",
+      "function unrelate(uint256 tail, uint64 rel, uint256 head)",
+    ]),
+    ...loadNonFuncAbiItems("OmniRegistry"),
+  ],
+};
 
 export function removeAbiParamByName(abi: AbiFunctionDoc, name: string): AbiFunctionDoc {
   const inputs = abi.inputs.filter((p) => p.name !== name);
