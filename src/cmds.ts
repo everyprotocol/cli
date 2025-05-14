@@ -32,26 +32,32 @@ export interface CommandConfig {
   ) => { address: Address; tag: string; args: unknown[] } | Promise<{ address: Address; tag: string; args: unknown[] }>;
 }
 
+export function defaultReadFunctionOptions() {
+  const options = [];
+  options.push(new Option("-u, --universe <universe>", "universe name").default("local"));
+  options.push(new Option("--dryrun", "dry run"));
+  return options;
+}
+
+export function defaultWriteFunctionOptions() {
+  const options = [];
+  options.push(new Option("-u, --universe <universe>", "universe name").default("local"));
+  options.push(new Option("-k, --private-key <key>", "private key to sign the transaction"));
+  options.push(new Option("-a, --account <account>", "name of the keystore to sign the transaction"));
+  options.push(new Option("-p, --password [password]", "password to decrypt the keystore"));
+  options.push(new Option("-f, --password-file <file>", "file containing the password to decrypt the keystore"));
+  options.push(new Option("--foundry", "use keystore from Foundry directory (~/.foundry/keystores)"));
+  options.push(new Option("--dryrun", "dry run"));
+  return options;
+}
+
 const defaultConfig = {
   cmdAbi: (txnAbi: AbiFunctionDoc) => txnAbi,
   cmdName: (cmdAbi: AbiFunctionDoc) => cmdAbi.name,
   cmdDescription: (cmdAbi: AbiFunctionDoc) => cmdAbi._metadata?.notice || cmdAbi.name,
   cmdOptions: (cmdAbi: AbiFunctionDoc) => {
-    const options = [];
     const read = cmdAbi.stateMutability == "view" || cmdAbi.stateMutability == "pure";
-    if (read) {
-      options.push(new Option("-u, --universe <universe>", "universe name").default("local"));
-      options.push(new Option("--dryrun", "dry run"));
-    } else {
-      options.push(new Option("-u, --universe <universe>", "universe name").default("local"));
-      options.push(new Option("-k, --private-key <key>", "private key to sign the transaction"));
-      options.push(new Option("-a, --account <account>", "name of the keystore to sign the transaction"));
-      options.push(new Option("-p, --password [password]", "password to decrypt the keystore"));
-      options.push(new Option("-f, --password-file <file>", "file containing the password to decrypt the keystore"));
-      options.push(new Option("--foundry", "use keystore from Foundry directory (~/.foundry/keystores)"));
-      options.push(new Option("--dryrun", "dry run"));
-    }
-    return options;
+    return read ? defaultReadFunctionOptions() : defaultWriteFunctionOptions();
   },
   cmdArguments: (cmdAbi: AbiFunctionDoc) =>
     cmdAbi.inputs.map((input) => {
@@ -73,6 +79,13 @@ const defaultConfig = {
     } else {
       const { publicClient, walletClient } = await getClients(ctx.conf, opts);
       const account = walletClient.account;
+      console.log({
+        isRead,
+        address: `${address} (${tag})`,
+        account: account?.address,
+        signature: ctx.txnAbi._metadata.signature!,
+        args,
+      });
       const { request } = await publicClient.simulateContract({ address, abi, functionName, args, account });
       const hash = await walletClient.writeContract(request);
       console.log(`Transaction sent: ${hash}`);

@@ -3,6 +3,7 @@ import path from "path";
 import os from "os";
 import { parse as parseTOML } from "@iarna/toml";
 import { OptionValues } from "commander";
+import { __dirname } from "./utils.js";
 
 export interface UniverseConfig {
   name: string;

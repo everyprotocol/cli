@@ -5,6 +5,7 @@ import JSON5 from "json5";
 import { rstrip, excludes, includes, lstrip, startsWith, checkArguments } from "./utils.js";
 import { loadNonFuncAbiItems, loadFuncAbiItems, replaceAbiParamAt, insertAbiParamAt } from "./abi.js";
 import { Command } from "commander";
+import { genMintCommand } from "./mint.js";
 
 interface SubCommands {
   kind: Command[];
@@ -31,9 +32,16 @@ const setContractFuncs = loadFuncAbiItems("ISet");
 const setRegistryAdminFuncs = loadFuncAbiItems("ISetRegistryAdmin");
 const objectMinterAdminFuncs = loadFuncAbiItems("IObjectMinterAdmin");
 
-const readSetContractAbi = [
+export const readSetContractAbi = [
   ...parseAbi(["function setContract(uint64 id) external view returns (address code)"]),
   ...setRegistryNonFuncs,
+];
+
+export const mintAbi = [
+  ...parseAbi([
+    "function mint(address to, address set, uint64 id, bytes memory data, bytes memory auth, uint32 policy) payable",
+  ]),
+  ...objectMinterNonFuncs,
 ];
 
 export function generateCommands(): SubCommands {
@@ -70,18 +78,22 @@ export function generateCommands(): SubCommands {
     .sort(byPreferredOrder);
 
   const object = [
+    genMintCommand(),
     // mint functions
-    ...objectMinterFuncs
-      .filter(includes(["mint"]))
-      .map(AbiToCommand({ contract: "ObjectMinter", nonFuncs: objectMinterNonFuncs })),
+    // ...objectMinterFuncs
+    //   .filter(includes(["mint"]))
+    //   .map(AbiToCommand({ contract: "ObjectMinter", nonFuncs: objectMinterNonFuncs })),
     // write functions
     ...setContractFuncs
       .filter(includes("update,upgrade,touch,transfer".split(",")))
       .map(AbiToCommand(setContractObjectCmdConfig)),
     // read functions
     ...setContractFuncs
-      .filter(excludes("update,upgrade,touch,transfer,supportsInterface".split(",")))
-      .map(AbiToCommand({ contract: "SetContract", nonFuncs: [] })),
+      .filter(excludes("update,upgrade,touch,transfer,uri,supportsInterface".split(",")))
+      .map(AbiToCommand(setContractObjectCmdConfig)),
+    ...setContractFuncs
+      .filter(includes("uri".split(",")))
+      .map(AbiToCommand({ ...setContractObjectCmdConfig, txnPrepare: objectUriTxnPrepare })),
     // relate/unrelate
     ...omniRegistryFuncs
       .filter(includes("relate,unrelate".split(",")))
@@ -123,6 +135,24 @@ const setContractObjectCmdConfig: CommandConfig = {
     })) as Address;
     return { address: address as Address, tag: ctx.contract, args };
   },
+};
+
+const objectUriTxnPrepare = async function (ctx: CommandContext): Promise<{
+  address: Address;
+  tag: string;
+  args: /* eslint-disable-line @typescript-eslint/no-explicit-any */ any[];
+}> {
+  const rawArgs = checkArguments(ctx.cmd.args, ctx.cmdAbi);
+  // const [set, id] = rawArgs[0].split(".");
+  const set = rawArgs[0].split(".")[0];
+  const publicClient = createPublicClient({ transport: http(ctx.conf.rpcUrl) });
+  const address = (await publicClient.readContract({
+    address: ctx.conf.contracts["SetRegistry"] as Address,
+    abi: readSetContractAbi,
+    functionName: "setContract",
+    args: [set],
+  })) as Address;
+  return { address: address as Address, tag: ctx.contract, args: [] };
 };
 
 const setRegistryAdminCmdConfig: CommandConfig = {
@@ -174,7 +204,7 @@ function AbiToCommand(conf: CommandConfig) {
 
 function byPreferredOrder<T extends { name(): string }>(a: T, b: T): number {
   const ORDER_MAP = new Map(
-    "mint,register,update,upgrade,touch,transfer,relate,unrelate,owner,revision,descriptor,elements,sota,snapshot,status,uri"
+    "mint,register,update,upgrade,touch,transfer,relate,unrelate,owner,descriptor,elements,revision,sota,snapshot,status,admint,contract,rule,uri"
       .split(",")
       .map((name, index) => [name, index])
   );
