@@ -2,8 +2,17 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 import { parse as parseTOML } from "@iarna/toml";
-import type { EveryConfig, UniverseConfig } from "./types";
 import { OptionValues } from "commander";
+
+export interface UniverseConfig {
+  name: string;
+  rpcUrl: string;
+  contracts: Record<string, string>;
+}
+
+export interface EveryConfig {
+  universes: Record<string, UniverseConfig>;
+}
 
 // Cache
 let CONFIG_CACHED: EveryConfig | null = null;
@@ -37,8 +46,10 @@ function loadProtocolConfig(): EveryConfig {
 
     try {
       const raw = fs.readFileSync(configPath, "utf8");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const parsed = parseTOML(raw) as any;
       if (parsed.universes) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         for (const [name, uni] of Object.entries<any>(parsed.universes)) {
           // console.log(name, uni);
           mergedConfig.universes[name] = {

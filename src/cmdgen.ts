@@ -1,169 +1,184 @@
-import { AbiFunctionDoc } from "./types";
-import fs from "fs";
-import path from "path";
-import { toFunctionSignature } from "viem";
-import { FunctionCommand } from "./function-command";
+import { AbiFunctionDoc } from "./abi.js";
+import { Address, createPublicClient, http, parseAbi } from "viem";
+import { CommandContext, configureCommand, CommandConfig } from "./cmds.js";
+import JSON5 from "json5";
+import { rstrip, excludes, includes, lstrip, startsWith, checkArguments } from "./utils.js";
+import { loadNonFuncAbiItems, loadFuncAbiItems, replaceAbiParamAt, insertAbiParamAt } from "./abi.js";
+import { Command } from "commander";
 
 interface SubCommands {
-  kind: FunctionCommand[];
-  set: FunctionCommand[];
-  relation: FunctionCommand[];
-  unique: FunctionCommand[];
-  value: FunctionCommand[];
-  object: FunctionCommand[];
-  mintpolicy: FunctionCommand[];
+  kind: Command[];
+  set: Command[];
+  relation: Command[];
+  unique: Command[];
+  value: Command[];
+  object: Command[];
+  mintpolicy: Command[];
 }
 
-const ORDER_MAP = new Map(
-  "mint,register,update,upgrade,touch,transfer,relate,unrelate,owner,revision,descriptor,elements,sota,snapshot,status,uri"
-    .split(",")
-    .map((name, index) => [name, index])
-);
+const objectMinterNonFuncs = loadNonFuncAbiItems("ObjectMinter");
+const elemRegistryNonFuncs = loadNonFuncAbiItems("ElementRegistry");
+const omniRegistryNonFuncs = loadNonFuncAbiItems("OmniRegistry");
+const kindRegistryrNonFuncs = loadNonFuncAbiItems("KindRegistry");
+const setRegistryNonFuncs = loadNonFuncAbiItems("SetRegistry");
 
-function getPreferredOrder<T extends { name(): string }>(t: T): number {
-  return ORDER_MAP.get(t.name()) ?? Infinity;
-}
+const kindRegistryFuncs = loadFuncAbiItems("IKindRegistry");
+const setRegistryFuncs = loadFuncAbiItems("ISetRegistry");
+const omniRegistryFuncs = loadFuncAbiItems("IOmniRegistry");
+const elemRegistryFuncs = loadFuncAbiItems("IElementRegistry");
+const objectMinterFuncs = loadFuncAbiItems("IObjectMinter");
+const setContractFuncs = loadFuncAbiItems("ISet");
+const setRegistryAdminFuncs = loadFuncAbiItems("ISetRegistryAdmin");
+const objectMinterAdminFuncs = loadFuncAbiItems("IObjectMinterAdmin");
 
-function byPreferredOrder<T extends { name(): string }>(a: T, b: T): number {
-  const aIndex = ORDER_MAP.get(a.name()) ?? Infinity;
-  const bIndex = ORDER_MAP.get(b.name()) ?? Infinity;
-  return aIndex - bIndex;
-}
-
-function toCommand(contract: string, nonFuncs: AbiFunctionDoc[], getName?: (func: AbiFunctionDoc) => string) {
-  return function (func: AbiFunctionDoc) {
-    return new FunctionCommand().configure(contract, func, nonFuncs, getName);
-  };
-}
+const readSetContractAbi = [
+  ...parseAbi(["function setContract(uint64 id) external view returns (address code)"]),
+  ...setRegistryNonFuncs,
+];
 
 export function generateCommands(): SubCommands {
-  const kindRegistryFuncs = loadFuncAbiItems("IKindRegistry");
-  const setRegistryFuncs = loadFuncAbiItems("ISetRegistry");
-  const omniRegistryFuncs = loadFuncAbiItems("IOmniRegistry");
-  const elemRegistryFuncs = loadFuncAbiItems("IElementRegistry");
-  const objectMinterFuncs = loadFuncAbiItems("IObjectMinter");
-  const setContractFuncs = loadFuncAbiItems("ISet");
-  const setRegistryAdminFuncs = loadFuncAbiItems("ISetRegistryAdmin");
-  const objectMinterAdminFuncs = loadFuncAbiItems("IObjectMinterAdmin");
-
-  const objectMinterNonFuncs = loadNonFuncAbiItems("ObjectMinter");
-  const elemRegistryNonFuncs = loadNonFuncAbiItems("ElementRegistry");
-  const omniRegistryNonFuncs = loadNonFuncAbiItems("OmniRegistry");
-  const kindRegistryrNonFuncs = loadNonFuncAbiItems("KindRegistry");
-  const setRegistryNonFuncs = loadNonFuncAbiItems("SetRegistry");
-
   const kind = kindRegistryFuncs
-    .map(toCommand("KindRegistry", kindRegistryrNonFuncs, lstrip("kind")))
+    .map(AbiToCommand({ contract: "KindRegistry", nonFuncs: kindRegistryrNonFuncs, cmdName: lstrip("kind") }))
     .sort(byPreferredOrder);
 
   const set = [
-    ...setRegistryAdminFuncs.map(toCommand("SetContract", setRegistryNonFuncs, rstrip("Set"))),
+    ...setRegistryAdminFuncs.map(AbiToCommand(setRegistryAdminCmdConfig)),
     ...setRegistryFuncs
       .filter(excludes(["setRegister", "setUpdate", "setTouch", "setUpgrade"]))
-      .map(toCommand("SetRegistry", setRegistryNonFuncs, lstrip("set"))),
+      .map(AbiToCommand({ contract: "SetRegistry", nonFuncs: setRegistryNonFuncs, cmdName: lstrip("set") })),
   ].sort(byPreferredOrder);
 
   const relation = omniRegistryFuncs
     .filter(startsWith("relation"))
-    .map(toCommand("OmniRegistry", omniRegistryNonFuncs, lstrip("relation")))
+    .map(
+      AbiToCommand({
+        contract: "OmniRegistry",
+        nonFuncs: omniRegistryNonFuncs,
+        cmdName: lstrip("relation"),
+      })
+    )
     .sort(byPreferredOrder);
 
   const unique = elemRegistryFuncs
     .filter(startsWith("unique"))
-    .map(toCommand("ElementRegistry", elemRegistryNonFuncs, lstrip("unique")))
+    .map(AbiToCommand({ contract: "ElementRegistry", nonFuncs: elemRegistryNonFuncs, cmdName: lstrip("unique") }))
     .sort(byPreferredOrder);
 
   const value = elemRegistryFuncs
     .filter(startsWith("value"))
-    .map(toCommand("ElementRegistry", elemRegistryNonFuncs, lstrip("value")))
+    .map(AbiToCommand({ contract: "ElementRegistry", nonFuncs: elemRegistryNonFuncs, cmdName: lstrip("value") }))
     .sort(byPreferredOrder);
 
   const object = [
     // mint functions
-    ...objectMinterFuncs.filter(includes(["mint"])).map(toCommand("ObjectMinter", objectMinterNonFuncs)),
+    ...objectMinterFuncs
+      .filter(includes(["mint"]))
+      .map(AbiToCommand({ contract: "ObjectMinter", nonFuncs: objectMinterNonFuncs })),
     // write functions
-    ...setContractFuncs.filter(includes("update,upgrade,touch,transfer".split(","))).map(toCommand("SetContract", [])),
+    ...setContractFuncs
+      .filter(includes("update,upgrade,touch,transfer".split(",")))
+      .map(AbiToCommand(setContractObjectCmdConfig)),
     // read functions
     ...setContractFuncs
       .filter(excludes("update,upgrade,touch,transfer,supportsInterface".split(",")))
-      .map(toCommand("SetContract", [])),
+      .map(AbiToCommand({ contract: "SetContract", nonFuncs: [] })),
     // relate/unrelate
     ...omniRegistryFuncs
       .filter(includes("relate,unrelate".split(",")))
-      .map(toCommand("OmniRegistry", omniRegistryNonFuncs)),
+      .map(AbiToCommand({ contract: "OmniRegistry", nonFuncs: omniRegistryNonFuncs })),
   ].sort(byPreferredOrder);
 
   const mintpolicy = [
-    ...objectMinterAdminFuncs.map(toCommand("SetContract", objectMinterNonFuncs, rstrip("MintPolicy"))),
+    ...objectMinterAdminFuncs.map(AbiToCommand(objectMinterAdminCmdConfig)),
     ...objectMinterFuncs
       .filter(startsWith("mintPolicy"))
       .filter(excludes("mintPolicyAdd,mintPolicyEnable,mintPolicyDisable".split(",")))
-      .map(toCommand("ObjectMinter", objectMinterNonFuncs, lstrip("mintPolicy"))),
+      .map(AbiToCommand({ contract: "ObjectMinter", nonFuncs: objectMinterNonFuncs, cmdName: lstrip("mintPolicy") })),
   ].sort(byPreferredOrder);
 
   return { kind, set, relation, unique, value, mintpolicy, object };
 }
 
-export function loadAbiFromFile(name: string): any {
-  const file = path.resolve(__dirname, "../abis", `${name}.json`);
-  const content = fs.readFileSync(file, "utf8");
-  return JSON.parse(content);
-}
-
-export function loadFuncAbiItems(name: string) {
-  let abi = loadAbiFromFile(name);
-  const metadata = abi.metadata?.output || {};
-  const userMethods = metadata.userdoc?.methods || {};
-  const devMethods = metadata.devdoc?.methods || {};
-  return abi.abi
-    .filter((item: any) => item.type === "function")
-    .map((item: any) => {
-      const signature = toFunctionSignature(item);
-      const userdoc = userMethods[signature] || {};
-      const devdoc = devMethods[signature] || {};
-      const _metadata = {
-        signature,
-        ...devdoc,
-        ...userdoc,
-      };
-      return {
-        ...item,
-        _metadata,
-      } as AbiFunctionDoc;
+const setContractObjectCmdConfig: CommandConfig = {
+  contract: "ISet",
+  nonFuncs: [],
+  cmdAbi: function (txnAbi: AbiFunctionDoc): AbiFunctionDoc {
+    return replaceAbiParamAt(txnAbi, 0, {
+      name: "sid",
+      type: "string",
+      doc: "Scoped Object ID (in form of set.id, e.g., 17.1)",
     });
+  },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  txnPrepare: async function (ctx: CommandContext): Promise<{ address: Address; tag: string; args: any[] }> {
+    const rawArgs = checkArguments(ctx.cmd.args, ctx.cmdAbi);
+    const [set, id] = rawArgs[0].split(".");
+    const args = [JSON5.parse(id), ...rawArgs.slice(1)];
+    const publicClient = createPublicClient({ transport: http(ctx.conf.rpcUrl) });
+    const address = (await publicClient.readContract({
+      address: ctx.conf.contracts["SetRegistry"] as Address,
+      abi: readSetContractAbi,
+      functionName: "setContract",
+      args: [set],
+    })) as Address;
+    return { address: address as Address, tag: ctx.contract, args };
+  },
+};
+
+const setRegistryAdminCmdConfig: CommandConfig = {
+  contract: "ISetRegistryAdmin",
+  nonFuncs: setRegistryNonFuncs,
+  cmdName: rstrip("Set"),
+  cmdAbi: function (txnAbi: AbiFunctionDoc): AbiFunctionDoc {
+    return insertAbiParamAt(txnAbi, 0, {
+      name: "contract",
+      type: "address",
+      doc: "address of the set contract",
+    });
+  },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  txnPrepare: async function (ctx: CommandContext): Promise<{ address: Address; tag: string; args: any[] }> {
+    const raw = checkArguments(ctx.cmd.args, ctx.cmdAbi);
+    const address = raw[0] as Address;
+    const args = raw.slice(1);
+    return { address, tag: ctx.contract, args };
+  },
+};
+
+const objectMinterAdminCmdConfig: CommandConfig = {
+  contract: "IObjectMinterAdmin",
+  nonFuncs: objectMinterNonFuncs,
+  cmdName: rstrip("MintPolicy"),
+  cmdAbi: function (txnAbi: AbiFunctionDoc): AbiFunctionDoc {
+    return insertAbiParamAt(txnAbi, 0, {
+      name: "contract",
+      type: "address",
+      doc: "address of the contract",
+    });
+  },
+  txnPrepare: async function (ctx: CommandContext): Promise<{
+    address: Address;
+    tag: string;
+    args: /* eslint-disable-line @typescript-eslint/no-explicit-any */ any[];
+  }> {
+    const raw = checkArguments(ctx.cmd.args, ctx.cmdAbi);
+    const address = raw[0] as Address;
+    const args = raw.slice(1);
+    return { address, tag: ctx.contract, args };
+  },
+};
+
+function AbiToCommand(conf: CommandConfig) {
+  return (txnAbi: AbiFunctionDoc) => configureCommand(txnAbi, conf);
 }
 
-export function loadNonFuncAbiItems(name: string): AbiFunctionDoc[] {
-  let abi = loadAbiFromFile(name);
-  return (abi.abi || []).filter((item: any) => item.type == "error" || item.type == "event");
-}
-
-function lstrip(prefix: string) {
-  return function (func: AbiFunctionDoc): string {
-    return func.name.startsWith(prefix) ? func.name.substring(prefix.length).toLowerCase() : func.name;
-  };
-}
-
-function rstrip(postfix: string) {
-  return function (func: AbiFunctionDoc): string {
-    return func.name.endsWith(postfix) ? func.name.slice(0, -postfix.length) : func.name;
-  };
-}
-
-function startsWith(prefix: string) {
-  return function (func: AbiFunctionDoc): boolean {
-    return func.name.startsWith(prefix);
-  };
-}
-
-function excludes(names: string[]) {
-  return function (f: AbiFunctionDoc): boolean {
-    return !names.includes(f.name);
-  };
-}
-
-function includes(names: string[]) {
-  return function (f: AbiFunctionDoc): boolean {
-    return names.includes(f.name);
-  };
+function byPreferredOrder<T extends { name(): string }>(a: T, b: T): number {
+  const ORDER_MAP = new Map(
+    "mint,register,update,upgrade,touch,transfer,relate,unrelate,owner,revision,descriptor,elements,sota,snapshot,status,uri"
+      .split(",")
+      .map((name, index) => [name, index])
+  );
+  const aIndex = ORDER_MAP.get(a.name()) ?? Infinity;
+  const bIndex = ORDER_MAP.get(b.name()) ?? Infinity;
+  return aIndex - bIndex;
 }

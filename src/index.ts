@@ -1,9 +1,9 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 
 import { Command } from "commander";
-import pkg from "../package.json" assert { type: "json" };
-import { RenamingCommand } from "./renaming-command";
-import { generateCommands } from "./cmdgen";
+import { generateCommands } from "./cmdgen.js";
+import { RenamingCommand } from "./cmds.js";
+import { version } from "./utils.js";
 
 async function main() {
   const subCmds = generateCommands();
@@ -27,7 +27,7 @@ async function main() {
   const program = new Command()
     .name("every")
     .description("CLI for interacting with Every Protocol")
-    .version(pkg.version)
+    .version(version())
     .showHelpAfterError(true);
   program.addCommand(kindCmd);
   program.addCommand(setCmd);
@@ -39,7 +39,7 @@ async function main() {
 
   try {
     await program.parseAsync();
-  } catch (e: any) {
+  } catch (e: /*eslint-disable-line @typescript-eslint/no-explicit-any*/ any) {
     console.error(e.message);
   }
 }
