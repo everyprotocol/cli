@@ -35,7 +35,7 @@ export interface CommandConfig {
 export function defaultReadFunctionOptions() {
   const options = [];
   options.push(new Option("-u, --universe <universe>", "universe name").default("local"));
-  options.push(new Option("--dryrun", "dry run"));
+  options.push(new Option("--dry-run", "Simulate the command without sending a transaction"));
   return options;
 }
 
@@ -45,9 +45,9 @@ export function defaultWriteFunctionOptions() {
   options.push(new Option("-k, --private-key <key>", "private key to sign the transaction"));
   options.push(new Option("-a, --account <account>", "name of the keystore to sign the transaction"));
   options.push(new Option("-p, --password [password]", "password to decrypt the keystore"));
-  options.push(new Option("-f, --password-file <file>", "file containing the password to decrypt the keystore"));
-  options.push(new Option("--foundry", "use keystore from Foundry directory (~/.foundry/keystores)"));
-  options.push(new Option("--dryrun", "dry run"));
+  options.push(new Option("--password-file <file>", "file containing the password to decrypt the keystore"));
+  options.push(new Option("-f, --foundry", "use keystore from Foundry directory (~/.foundry/keystores)"));
+  options.push(new Option("--dry-run", "Simulate the command without sending a transaction"));
   return options;
 }
 
