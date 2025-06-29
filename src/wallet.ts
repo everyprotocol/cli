@@ -10,6 +10,8 @@ import * as os from "os";
 import * as path from "path";
 import * as readline from "readline";
 
+// ai! check all options, remove --keystore option, keep --dir , they are the same, and refine the description of the option
+
 // Helper functions
 function resolveKeyStoreDir(options: any): string {
   if (options.foundry) {
@@ -93,7 +95,7 @@ export function genWalletCommands() {
 
   // Generate command
   const generateCmd = new Command()
-    .name("generate")
+    .name("new")
     .description("Generate a new wallet")
     .option("--keystore <dir>", "keystore directory")
     .option("--dir <dir>", "custom directory for keystores")
