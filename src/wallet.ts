@@ -46,6 +46,14 @@ function loadKeystore(file: string): any {
   return JSON.parse(fs.readFileSync(file, "utf8"));
 }
 
+// ai!  see this to simplify : const password = opts.password
+// ? opts.password
+// : opts.passwordFile
+//   ? fs.readFileSync(opts.passwordFile, "utf8").trim()
+//   : keystore.crypto
+//     ? promptSync({ sigint: true })("Enter password to decrypt keystore: ", { echo: "" })
+//     : undefined;
+
 async function getPassword(options: any): Promise<string> {
   if (options.password) {
     return options.password;
@@ -62,16 +70,16 @@ async function getPassword(options: any): Promise<string> {
     stdin.setRawMode(true);
     stdin.resume();
     stdin.setEncoding("utf8");
-    
+
     let password = "";
     stdin.on("data", (key: Buffer) => {
       const char = key.toString();
-      
+
       // Ctrl+C or Ctrl+D
       if (char === "\u0003" || char === "\u0004") {
         process.exit(1);
       }
-      
+
       // Enter key
       if (char === "\r" || char === "\n") {
         process.stdout.write("\n");
@@ -80,7 +88,7 @@ async function getPassword(options: any): Promise<string> {
         resolve(password);
         return;
       }
-      
+
       // Backspace
       if (char === "\u007f") {
         if (password.length > 0) {
@@ -88,7 +96,7 @@ async function getPassword(options: any): Promise<string> {
         }
         return;
       }
-      
+
       // Add character to password
       password += char;
     });
