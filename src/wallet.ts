@@ -1,7 +1,7 @@
-import { Command, Option } from "commander";
+import { Command } from "commander";
 import { Keyring } from "@polkadot/keyring";
 import { mnemonicGenerate } from "@polkadot/util-crypto";
-import { isHex, hexToU8a, u8aToHex } from "@polkadot/util";
+import { isHex, hexToU8a } from "@polkadot/util";
 import { base64Decode } from "@polkadot/util-crypto/base64";
 import { decodePair } from "@polkadot/keyring/pair/decode";
 import { bytesToHex } from "viem";
@@ -11,6 +11,7 @@ import * as path from "path";
 import * as readline from "readline";
 
 // Helper functions
+// ai! change argument to command options, so that the directory can be dtermined from --foundry(use foundry dir), --dir (custom dir), or the every dir
 function resolveKeyStoreDir(keystoreDir?: string): string {
   if (keystoreDir) return keystoreDir;
   return path.join(os.homedir(), ".every", "keystores");
@@ -35,17 +36,17 @@ async function getPassword(opts: any): Promise<string> {
   if (opts.password) {
     return opts.password;
   }
-  
+
   if (opts.passwordFile) {
     return fs.readFileSync(opts.passwordFile, "utf8").trim();
   }
-  
+
   // Interactive password prompt
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
   });
-  
+
   return new Promise((resolve) => {
     rl.question("Password: ", (password) => {
       rl.close();
@@ -62,14 +63,12 @@ function decryptPrivateKey(encodedRaw: string, password: string | undefined, enc
 
 // Wallet commands
 export function genWalletCommands() {
-  const walletCmd = new Command()
-    .name("wallet")
-    .description("Manage wallets");
+  const walletCmd = new Command().name("wallet").description("Manage wallets");
 
   // List command
   const listCmd = new Command()
     .name("list")
-    .description("List all wallets in the keystore")
+    .description("List all wallets in the keystore directory")
     .option("--keystore <dir>", "keystore directory")
     .action(async (options) => {
       const dir = resolveKeyStoreDir(options.keystore);
@@ -98,13 +97,13 @@ export function genWalletCommands() {
         console.error(`Keystore file exists: ${file}`);
         return;
       }
-      
+
       const password = await getPassword(options);
       const keyring = new Keyring();
       const mnemonic = mnemonicGenerate();
       const pair = keyring.addFromUri(mnemonic, { name }, options.type);
       const json = pair.toJson(password);
-      
+
       fs.writeFileSync(file, JSON.stringify(json));
       console.log(`Wallet ${name} saved to ${file}`);
       console.log(`Mnemonic: ${mnemonic}`);
@@ -126,12 +125,12 @@ export function genWalletCommands() {
         console.error(`Keystore file exists: ${file}`);
         return;
       }
-      
+
       const password = await getPassword(options);
       const keyring = new Keyring({ type: options.type });
       const pair = keyring.addFromUri(suri);
       const json = pair.toJson(password);
-      
+
       fs.writeFileSync(file, JSON.stringify(json));
       console.log(`Wallet ${name} saved to ${file}`);
     });
@@ -141,17 +140,17 @@ export function genWalletCommands() {
     .name("inspect")
     .description("Inspect a wallet")
     .option("--keystore <dir>", "keystore directory")
-    .option("--type <type>", "key type (ed25519, sr25519, ethereum)", "sr25519")
+    .option("--type <type>", "key type (sr25519, ed25519, ethereum)", "sr25519")
     .option("-p, --password <password>", "password to decrypt the keystore")
     .option("--password-file <file>", "file containing the password")
-    .option("-x, --decrypt", "also decrypt private key", false)
-    .argument("<name>", "name of the wallet to inspect")
+    .option("-x, --decrypt", "also decrypt the private key", false)
+    .argument("<name>", "name of the wallet")
     .action(async (name, options) => {
       const keyFile = resolveKeyStoreFile(name, options.keystore);
       const keyData = readKeyStoreKey(keyFile);
       const keyring = new Keyring({ type: options.type });
       const account = keyring.addFromJson(keyData);
-      
+
       let password;
       if (account.isLocked) {
         password = await getPassword(options);
@@ -164,7 +163,7 @@ export function genWalletCommands() {
         const encType = !Array.isArray(type) ? [type] : type;
         decoded = decryptPrivateKey(keyData.encoded, password, encType);
       }
-      
+
       console.log(`  Keystore: ${options.keystore || "~/.every/keystores"}`);
       console.log(`    Wallet: ${name}`);
       console.log(`      Type: ${account.type}`);
@@ -172,7 +171,7 @@ export function genWalletCommands() {
       console.log(`   Address: ${account.address}`);
       console.log(`AddressRaw: ${bytesToHex(account.addressRaw)}`);
       console.log(` PublicKey: ${bytesToHex(account.publicKey)}`);
-      
+
       if (decoded) {
         console.log(`SecretKey: ${bytesToHex(decoded.secretKey)}`);
       }
