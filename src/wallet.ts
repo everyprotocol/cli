@@ -10,8 +10,6 @@ import * as os from "os";
 import * as path from "path";
 import * as readline from "readline";
 
-// ai! check all options, remove --keystore option, keep --dir , they are the same, and refine the description of the option
-
 // Helper functions
 function resolveKeyStoreDir(options: any): string {
   if (options.foundry) {
@@ -19,9 +17,6 @@ function resolveKeyStoreDir(options: any): string {
   }
   if (options.dir) {
     return options.dir;
-  }
-  if (options.keystore) {
-    return options.keystore;
   }
   return path.join(os.homedir(), ".every", "keystores");
 }
@@ -78,8 +73,7 @@ export function genWalletCommands() {
   const listCmd = new Command()
     .name("list")
     .description("List all wallets in the keystore directory")
-    .option("--keystore <dir>", "keystore directory")
-    .option("--dir <dir>", "custom directory for keystores")
+    .option("--dir <dir>", "specify a custom keystore directory")
     .option("--foundry", "use foundry keystore directory (~/.foundry/keystores)")
     .action(async (options) => {
       const dir = resolveKeyStoreDir(options);
@@ -97,8 +91,7 @@ export function genWalletCommands() {
   const generateCmd = new Command()
     .name("new")
     .description("Generate a new wallet")
-    .option("--keystore <dir>", "keystore directory")
-    .option("--dir <dir>", "custom directory for keystores")
+    .option("--dir <dir>", "specify a custom keystore directory")
     .option("--foundry", "use foundry keystore directory (~/.foundry/keystores)")
     .option("--type <type>", "key type (ed25519, sr25519, ethereum)", "sr25519")
     .option("-p, --password <password>", "password to encrypt the keystore")
@@ -126,8 +119,7 @@ export function genWalletCommands() {
   const importCmd = new Command()
     .name("import")
     .description("Import a wallet")
-    .option("--keystore <dir>", "keystore directory")
-    .option("--dir <dir>", "custom directory for keystores")
+    .option("--dir <dir>", "specify a custom keystore directory")
     .option("--foundry", "use foundry keystore directory (~/.foundry/keystores)")
     .option("--type <type>", "key type (ed25519, sr25519, ethereum)", "sr25519")
     .option("-p, --password <password>", "password to encrypt the keystore")
@@ -154,8 +146,7 @@ export function genWalletCommands() {
   const inspectCmd = new Command()
     .name("inspect")
     .description("Inspect a wallet")
-    .option("--keystore <dir>", "keystore directory")
-    .option("--dir <dir>", "custom directory for keystores")
+    .option("--dir <dir>", "specify a custom keystore directory")
     .option("--foundry", "use foundry keystore directory (~/.foundry/keystores)")
     .option("--type <type>", "key type (sr25519, ed25519, ethereum)", "sr25519")
     .option("-p, --password <password>", "password to decrypt the keystore")
@@ -186,8 +177,6 @@ export function genWalletCommands() {
         keystoreDisplay = "~/.foundry/keystores";
       } else if (options.dir) {
         keystoreDisplay = options.dir;
-      } else if (options.keystore) {
-        keystoreDisplay = options.keystore;
       }
       console.log(`  Keystore: ${keystoreDisplay}`);
       console.log(`    Wallet: ${name}`);
