@@ -11,14 +11,21 @@ import * as path from "path";
 import * as readline from "readline";
 
 // Helper functions
-// ai! change argument to command options, so that the directory can be dtermined from --foundry(use foundry dir), --dir (custom dir), or the every dir
-function resolveKeyStoreDir(keystoreDir?: string): string {
-  if (keystoreDir) return keystoreDir;
+function resolveKeyStoreDir(options: any): string {
+  if (options.foundry) {
+    return path.join(os.homedir(), ".foundry", "keystores");
+  }
+  if (options.dir) {
+    return options.dir;
+  }
+  if (options.keystore) {
+    return options.keystore;
+  }
   return path.join(os.homedir(), ".every", "keystores");
 }
 
-function resolveKeyStoreFile(name: string, keystoreDir?: string): string {
-  const dir = resolveKeyStoreDir(keystoreDir);
+function resolveKeyStoreFile(name: string, options: any): string {
+  const dir = resolveKeyStoreDir(options);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -70,8 +77,10 @@ export function genWalletCommands() {
     .name("list")
     .description("List all wallets in the keystore directory")
     .option("--keystore <dir>", "keystore directory")
+    .option("--dir <dir>", "custom directory for keystores")
+    .option("--foundry", "use foundry keystore directory (~/.foundry/keystores)")
     .action(async (options) => {
-      const dir = resolveKeyStoreDir(options.keystore);
+      const dir = resolveKeyStoreDir(options);
       if (!fs.existsSync(dir)) {
         console.log(`Keystore directory does not exist: ${dir}`);
         return;
@@ -87,12 +96,14 @@ export function genWalletCommands() {
     .name("generate")
     .description("Generate a new wallet")
     .option("--keystore <dir>", "keystore directory")
+    .option("--dir <dir>", "custom directory for keystores")
+    .option("--foundry", "use foundry keystore directory (~/.foundry/keystores)")
     .option("--type <type>", "key type (ed25519, sr25519, ethereum)", "sr25519")
     .option("-p, --password <password>", "password to encrypt the keystore")
     .option("--password-file <file>", "file containing the password")
     .argument("<name>", "name of the wallet")
     .action(async (name, options) => {
-      const file = resolveKeyStoreFile(name, options.keystore);
+      const file = resolveKeyStoreFile(name, options);
       if (fs.existsSync(file)) {
         console.error(`Keystore file exists: ${file}`);
         return;
@@ -114,13 +125,15 @@ export function genWalletCommands() {
     .name("import")
     .description("Import a wallet")
     .option("--keystore <dir>", "keystore directory")
+    .option("--dir <dir>", "custom directory for keystores")
+    .option("--foundry", "use foundry keystore directory (~/.foundry/keystores)")
     .option("--type <type>", "key type (ed25519, sr25519, ethereum)", "sr25519")
     .option("-p, --password <password>", "password to encrypt the keystore")
     .option("--password-file <file>", "file containing the password")
     .argument("<name>", "name of the wallet")
     .argument("<suri>", "secret URI for the wallet")
     .action(async (name, suri, options) => {
-      const file = resolveKeyStoreFile(name, options.keystore);
+      const file = resolveKeyStoreFile(name, options);
       if (fs.existsSync(file)) {
         console.error(`Keystore file exists: ${file}`);
         return;
@@ -140,13 +153,15 @@ export function genWalletCommands() {
     .name("inspect")
     .description("Inspect a wallet")
     .option("--keystore <dir>", "keystore directory")
+    .option("--dir <dir>", "custom directory for keystores")
+    .option("--foundry", "use foundry keystore directory (~/.foundry/keystores)")
     .option("--type <type>", "key type (sr25519, ed25519, ethereum)", "sr25519")
     .option("-p, --password <password>", "password to decrypt the keystore")
     .option("--password-file <file>", "file containing the password")
     .option("-x, --decrypt", "also decrypt the private key", false)
     .argument("<name>", "name of the wallet")
     .action(async (name, options) => {
-      const keyFile = resolveKeyStoreFile(name, options.keystore);
+      const keyFile = resolveKeyStoreFile(name, options);
       const keyData = readKeyStoreKey(keyFile);
       const keyring = new Keyring({ type: options.type });
       const account = keyring.addFromJson(keyData);
@@ -164,7 +179,15 @@ export function genWalletCommands() {
         decoded = decryptPrivateKey(keyData.encoded, password, encType);
       }
 
-      console.log(`  Keystore: ${options.keystore || "~/.every/keystores"}`);
+      let keystoreDisplay = "~/.every/keystores";
+      if (options.foundry) {
+        keystoreDisplay = "~/.foundry/keystores";
+      } else if (options.dir) {
+        keystoreDisplay = options.dir;
+      } else if (options.keystore) {
+        keystoreDisplay = options.keystore;
+      }
+      console.log(`  Keystore: ${keystoreDisplay}`);
       console.log(`    Wallet: ${name}`);
       console.log(`      Type: ${account.type}`);
       console.log(`      Meta: ${JSON.stringify(account.meta)}`);
