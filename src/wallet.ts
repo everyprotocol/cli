@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import { Keyring } from "@polkadot/keyring";
-import { mnemonicGenerate } from "@polkadot/util-crypto";
+import { mnemonicGenerate, cryptoWaitReady } from "@polkadot/util-crypto";
 import { isHex, hexToU8a } from "@polkadot/util";
 import { base64Decode } from "@polkadot/util-crypto/base64";
 import { decodePair } from "@polkadot/keyring/pair/decode";
@@ -96,6 +96,9 @@ export function genWalletCommands() {
     .option("--foundry", "use foundry keystore directory (~/.foundry/keystores)")
     .option("--dir <dir>", "specify a custom keystore directory")
     .action(async (options) => {
+      // Ensure crypto is ready
+      await cryptoWaitReady();
+      
       const dir = resolveKeystoreDir(options);
       if (!fs.existsSync(dir)) {
         console.error(`Directory not exist: ${dir}`);
@@ -116,6 +119,9 @@ export function genWalletCommands() {
     .option("--foundry", "use foundry keystore directory (~/.foundry/keystores)")
     .argument("<name>", "name of the wallet")
     .action(async (name, options) => {
+      // Ensure crypto is ready
+      await cryptoWaitReady();
+      
       const password = setPassword(options);
       const keyring = new Keyring();
       const mnemonic = mnemonicGenerate();
@@ -136,6 +142,9 @@ export function genWalletCommands() {
     .argument("<name>", "name of the wallet")
     .argument("<suri>", "secret URI")
     .action(async (name, suri, options) => {
+      // Ensure crypto is ready
+      await cryptoWaitReady();
+      
       const password = setPassword(options);
       const keyring = new Keyring({ type: options.type });
       const pair = keyring.addFromUri(suri);
@@ -155,6 +164,9 @@ export function genWalletCommands() {
     .option("--foundry", "use foundry keystore directory (~/.foundry/keystores)")
     .argument("<name>", "name of the wallet")
     .action(async (name, options) => {
+      // Ensure crypto is ready
+      await cryptoWaitReady();
+      
       const file = resolveKeystoreFile(name, options);
       const keyData = loadKeystore(file);
       const keyring = new Keyring({ type: options.type });
