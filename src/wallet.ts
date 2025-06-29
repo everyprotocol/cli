@@ -47,13 +47,26 @@ function loadKeystore(file: string): any {
   return JSON.parse(fs.readFileSync(file, "utf8"));
 }
 
-// ai! modifity to re-enter password for confirmation
 function setPassword(opts: any): string {
-  const password = opts.password
-    ? opts.password
-    : opts.passwordFile
-      ? fs.readFileSync(opts.passwordFile, "utf8").trim()
-      : promptSync({ sigint: true })("Password: ", { echo: "" });
+  // If password is provided via command line or file, use it directly
+  if (opts.password) {
+    return opts.password;
+  }
+  
+  if (opts.passwordFile) {
+    return fs.readFileSync(opts.passwordFile, "utf8").trim();
+  }
+  
+  // Interactive password with confirmation
+  const prompt = promptSync({ sigint: true });
+  const password = prompt("Password: ", { echo: "" });
+  const confirmation = prompt("Confirm password: ", { echo: "" });
+  
+  if (password !== confirmation) {
+    console.error("Error: Passwords do not match");
+    process.exit(1);
+  }
+  
   return password;
 }
 
@@ -123,7 +136,7 @@ export function genWalletCommands() {
     .argument("<name>", "name of the wallet")
     .argument("<suri>", "secret URI")
     .action(async (name, suri, options) => {
-      const password = etPassword(options);
+      const password = setPassword(options);
       const keyring = new Keyring({ type: options.type });
       const pair = keyring.addFromUri(suri);
       const json = pair.toJson(password);
