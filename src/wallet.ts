@@ -46,7 +46,6 @@ function loadKeystore(file: string): any {
   return JSON.parse(fs.readFileSync(file, "utf8"));
 }
 
-// ai! do not show password
 async function getPassword(options: any): Promise<string> {
   if (options.password) {
     return options.password;
@@ -56,15 +55,42 @@ async function getPassword(options: any): Promise<string> {
     return fs.readFileSync(options.passwordFile, "utf8").trim();
   }
 
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
+  // Use a custom implementation to hide password input
+  process.stdout.write("Password: ");
   return new Promise((resolve) => {
-    rl.question("Password: ", (password) => {
-      rl.close();
-      resolve(password);
+    const stdin = process.stdin;
+    stdin.setRawMode(true);
+    stdin.resume();
+    stdin.setEncoding("utf8");
+    
+    let password = "";
+    stdin.on("data", (key: Buffer) => {
+      const char = key.toString();
+      
+      // Ctrl+C or Ctrl+D
+      if (char === "\u0003" || char === "\u0004") {
+        process.exit(1);
+      }
+      
+      // Enter key
+      if (char === "\r" || char === "\n") {
+        process.stdout.write("\n");
+        stdin.setRawMode(false);
+        stdin.pause();
+        resolve(password);
+        return;
+      }
+      
+      // Backspace
+      if (char === "\u007f") {
+        if (password.length > 0) {
+          password = password.slice(0, -1);
+        }
+        return;
+      }
+      
+      // Add character to password
+      password += char;
     });
   });
 }
