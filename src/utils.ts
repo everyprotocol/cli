@@ -70,8 +70,8 @@ export async function readPrivateKey(opts: OptionValues) {
   if (opts.privateKey) {
     return opts.privateKey.startsWith("0x") ? opts.privateKey : `0x${opts.privateKey}`;
   } else if (opts.account) {
-    const keystorePath = path.join(os.homedir(), opts.foundry ? ".foundry" : ".every", "keystores", opts.account);
-    const keystore = JSON.parse(fs.readFileSync(keystorePath, "utf8"));
+    const keystorePath = resolveKeystoreFile(opts.account, opts);
+    const keystore = loadKeystore(keystorePath);
     const password = opts.password
       ? opts.password
       : opts.passwordFile
@@ -101,4 +101,65 @@ export function checkArguments(raw: unknown[], func: AbiFunctionDoc): any[] {
     }
     return arg;
   });
+}
+
+export function resolveKeystoreDir(options: OptionValues): string {
+  if (options.foundry) {
+    return path.join(os.homedir(), ".foundry", "keystores");
+  }
+  if (options.dir) {
+    return options.dir;
+  }
+  return path.join(os.homedir(), ".every", "keystores");
+}
+
+export function resolveKeystoreFile(name: string, options: OptionValues): string {
+  const dir = resolveKeystoreDir(options);
+  return path.join(dir, name);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function saveKeystore(json: any, name: string, options: OptionValues) {
+  const dir = resolveKeystoreDir(options);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  const file = path.join(dir, name);
+  if (fs.existsSync(file)) {
+    throw new Error(`File exists: ${file}`);
+  }
+  fs.writeFileSync(file, JSON.stringify(json));
+  console.log(`File saved: ${file}`);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function loadKeystore(file: string): any {
+  if (!fs.existsSync(file)) {
+    throw new Error(`Keystore file not found: ${file}`);
+  }
+  return JSON.parse(fs.readFileSync(file, "utf8"));
+}
+
+export function getPassword(opts: OptionValues): string {
+  return opts.password
+    ? opts.password
+    : opts.passwordFile
+      ? fs.readFileSync(opts.passwordFile, "utf8").trim()
+      : promptSync({ sigint: true })("Password: ", { echo: "" });
+}
+
+export function getPasswordConfirm(opts: OptionValues): string {
+  if (opts.password) {
+    return opts.password;
+  }
+  if (opts.passwordFile) {
+    return fs.readFileSync(opts.passwordFile, "utf8").trim();
+  }
+  const prompt = promptSync({ sigint: true });
+  const password = prompt("Password: ", { echo: "" });
+  const confirmation = prompt("Confirm: ", { echo: "" });
+  if (password !== confirmation) {
+    throw new Error(`Error: Passwords do not match`);
+  }
+  return password;
 }

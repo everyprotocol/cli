@@ -5,80 +5,17 @@ import { isHex, hexToU8a } from "@polkadot/util";
 import { base64Decode } from "@polkadot/util-crypto/base64";
 import { decodePair } from "@polkadot/keyring/pair/decode";
 import { bytesToHex } from "viem";
-import promptSync from "prompt-sync";
 import * as fs from "fs";
-import * as os from "os";
-import * as path from "path";
-import * as readline from "readline";
+import {
+  getPassword,
+  getPasswordConfirm,
+  loadKeystore,
+  resolveKeystoreDir,
+  resolveKeystoreFile,
+  saveKeystore,
+} from "./utils.js";
 
-// Helper functions
-function resolveKeystoreDir(options: any): string {
-  if (options.foundry) {
-    return path.join(os.homedir(), ".foundry", "keystores");
-  }
-  if (options.dir) {
-    return options.dir;
-  }
-  return path.join(os.homedir(), ".every", "keystores");
-}
-
-function resolveKeystoreFile(name: string, options: any): string {
-  const dir = resolveKeystoreDir(options);
-  return path.join(dir, name);
-}
-
-function saveKeystore(json: any, name: string, options: any) {
-  const dir = resolveKeystoreDir(options);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-  const file = path.join(dir, name);
-  if (fs.existsSync(file)) {
-    throw new Error(`File exists: ${file}`);
-  }
-  fs.writeFileSync(file, JSON.stringify(json));
-  console.log(`File saved: ${file}`);
-}
-
-function loadKeystore(file: string): any {
-  if (!fs.existsSync(file)) {
-    throw new Error(`Keystore file not found: ${file}`);
-  }
-  return JSON.parse(fs.readFileSync(file, "utf8"));
-}
-
-function setPassword(opts: any): string {
-  // If password is provided via command line or file, use it directly
-  if (opts.password) {
-    return opts.password;
-  }
-  
-  if (opts.passwordFile) {
-    return fs.readFileSync(opts.passwordFile, "utf8").trim();
-  }
-  
-  // Interactive password with confirmation
-  const prompt = promptSync({ sigint: true });
-  const password = prompt("Password: ", { echo: "" });
-  const confirmation = prompt("Confirm password: ", { echo: "" });
-  
-  if (password !== confirmation) {
-    console.error("Error: Passwords do not match");
-    process.exit(1);
-  }
-  
-  return password;
-}
-
-function inputPassword(opts: any): string {
-  const password = opts.password
-    ? opts.password
-    : opts.passwordFile
-      ? fs.readFileSync(opts.passwordFile, "utf8").trim()
-      : promptSync({ sigint: true })("Password: ", { echo: "" });
-  return password;
-}
-
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function decryptPrivateKey(encodedRaw: string, password: string | undefined, encType: any) {
   const encoded = isHex(encodedRaw) ? hexToU8a(encodedRaw) : base64Decode(encodedRaw);
   const decoded = decodePair(password, encoded, encType);
@@ -96,14 +33,7 @@ export function genWalletCommands() {
     .option("--foundry", "use foundry keystore directory (~/.foundry/keystores)")
     .option("--dir <dir>", "specify a custom keystore directory")
     .action(async (options) => {
-      // Ensure crypto is ready
-      await cryptoWaitReady();
-      
       const dir = resolveKeystoreDir(options);
-      if (!fs.existsSync(dir)) {
-        console.error(`Directory not exist: ${dir}`);
-        process.exit(1);
-      }
       const files = fs.readdirSync(dir);
       files.forEach((file) => console.log(file));
     });
@@ -119,10 +49,8 @@ export function genWalletCommands() {
     .option("--foundry", "use foundry keystore directory (~/.foundry/keystores)")
     .argument("<name>", "name of the wallet")
     .action(async (name, options) => {
-      // Ensure crypto is ready
+      const password = getPasswordConfirm(options);
       await cryptoWaitReady();
-      
-      const password = setPassword(options);
       const keyring = new Keyring();
       const mnemonic = mnemonicGenerate();
       const pair = keyring.addFromUri(mnemonic, { name }, options.type);
@@ -142,10 +70,8 @@ export function genWalletCommands() {
     .argument("<name>", "name of the wallet")
     .argument("<suri>", "secret URI")
     .action(async (name, suri, options) => {
-      // Ensure crypto is ready
+      const password = getPasswordConfirm(options);
       await cryptoWaitReady();
-      
-      const password = setPassword(options);
       const keyring = new Keyring({ type: options.type });
       const pair = keyring.addFromUri(suri);
       const json = pair.toJson(password);
@@ -164,17 +90,15 @@ export function genWalletCommands() {
     .option("--foundry", "use foundry keystore directory (~/.foundry/keystores)")
     .argument("<name>", "name of the wallet")
     .action(async (name, options) => {
-      // Ensure crypto is ready
-      await cryptoWaitReady();
-      
       const file = resolveKeystoreFile(name, options);
       const keyData = loadKeystore(file);
+      await cryptoWaitReady();
       const keyring = new Keyring({ type: options.type });
       const account = keyring.addFromJson(keyData);
 
       let password;
       if (account.isLocked) {
-        password = inputPassword(options);
+        password = getPassword(options);
         account.unlock(password);
       }
 
