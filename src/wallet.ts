@@ -5,6 +5,7 @@ import { isHex, hexToU8a } from "@polkadot/util";
 import { base64Decode } from "@polkadot/util-crypto/base64";
 import { decodePair } from "@polkadot/keyring/pair/decode";
 import { bytesToHex } from "viem";
+import promptSync from "prompt-sync";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
@@ -46,53 +47,23 @@ function loadKeystore(file: string): any {
   return JSON.parse(fs.readFileSync(file, "utf8"));
 }
 
-async function getPassword(options: any): Promise<string> {
-  if (options.password) {
-    return options.password;
-  }
-  
-  if (options.passwordFile) {
-    return fs.readFileSync(options.passwordFile, "utf8").trim();
-  }
-  
-  // Use a custom implementation to hide password input
-  process.stdout.write("Password: ");
-  return new Promise((resolve) => {
-    const stdin = process.stdin;
-    stdin.setRawMode(true);
-    stdin.resume();
-    stdin.setEncoding("utf8");
-    
-    let password = "";
-    stdin.on("data", (key: Buffer) => {
-      const char = key.toString();
-      
-      // Ctrl+C or Ctrl+D
-      if (char === "\u0003" || char === "\u0004") {
-        process.exit(1);
-      }
-      
-      // Enter key
-      if (char === "\r" || char === "\n") {
-        process.stdout.write("\n");
-        stdin.setRawMode(false);
-        stdin.pause();
-        resolve(password);
-        return;
-      }
-      
-      // Backspace
-      if (char === "\u007f") {
-        if (password.length > 0) {
-          password = password.slice(0, -1);
-        }
-        return;
-      }
-      
-      // Add character to password
-      password += char;
-    });
-  });
+// ai! modifity to re-enter password for confirmation
+function setPassword(opts: any): string {
+  const password = opts.password
+    ? opts.password
+    : opts.passwordFile
+      ? fs.readFileSync(opts.passwordFile, "utf8").trim()
+      : promptSync({ sigint: true })("Password: ", { echo: "" });
+  return password;
+}
+
+function inputPassword(opts: any): string {
+  const password = opts.password
+    ? opts.password
+    : opts.passwordFile
+      ? fs.readFileSync(opts.passwordFile, "utf8").trim()
+      : promptSync({ sigint: true })("Password: ", { echo: "" });
+  return password;
 }
 
 function decryptPrivateKey(encodedRaw: string, password: string | undefined, encType: any) {
@@ -132,7 +103,7 @@ export function genWalletCommands() {
     .option("--foundry", "use foundry keystore directory (~/.foundry/keystores)")
     .argument("<name>", "name of the wallet")
     .action(async (name, options) => {
-      const password = await getPassword(options);
+      const password = setPassword(options);
       const keyring = new Keyring();
       const mnemonic = mnemonicGenerate();
       const pair = keyring.addFromUri(mnemonic, { name }, options.type);
@@ -152,7 +123,7 @@ export function genWalletCommands() {
     .argument("<name>", "name of the wallet")
     .argument("<suri>", "secret URI")
     .action(async (name, suri, options) => {
-      const password = await getPassword(options);
+      const password = etPassword(options);
       const keyring = new Keyring({ type: options.type });
       const pair = keyring.addFromUri(suri);
       const json = pair.toJson(password);
@@ -178,7 +149,7 @@ export function genWalletCommands() {
 
       let password;
       if (account.isLocked) {
-        password = await getPassword(options);
+        password = inputPassword(options);
         account.unlock(password);
       }
 
