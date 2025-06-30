@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import { defaultWriteFunctionOptions } from "./cmds.js";
-import { getClients, stringify } from "./utils.js";
+import { getClientsEth, stringify } from "./utils.js";
 import { getUniverseConfig } from "./config.js";
 import { Address, parseEventLogs, parseUnits } from "viem";
 import { abi } from "./abi.js";
@@ -26,7 +26,7 @@ async function action(this: Command) {
   const conf = getUniverseConfig(opts);
   const objectMinter = conf.contracts["ObjectMinter"] as Address;
   const setRegistry = conf.contracts["SetRegistry"] as Address;
-  const { publicClient, walletClient } = await getClients(conf, opts);
+  const { publicClient, walletClient } = await getClientsEth(conf, opts);
   const account = walletClient.account;
   const [set, id] = args0[0].split(".");
   const setContract = (await publicClient.readContract({

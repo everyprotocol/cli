@@ -2,7 +2,7 @@ import { Argument, Command, Option, CommandOptions } from "commander";
 import { Address, createPublicClient, http, parseEventLogs, stringify } from "viem";
 import { getUniverseConfig, UniverseConfig } from "./config.js";
 import { AbiEventOrError, AbiFunctionDoc } from "./abi.js";
-import { checkArguments, getClients } from "./utils.js";
+import { checkArguments, getClientsEth } from "./utils.js";
 
 export interface CommandContext {
   conf: UniverseConfig;
@@ -77,7 +77,7 @@ const defaultConfig = {
       const result = await publicClient.readContract({ address, abi, functionName, args });
       console.log(`Result:`, result);
     } else {
-      const { publicClient, walletClient } = await getClients(ctx.conf, opts);
+      const { publicClient, walletClient } = await getClientsEth(ctx.conf, opts);
       const account = walletClient.account;
       console.log({
         isRead,

@@ -1,6 +1,13 @@
-import { createPublicClient, createWalletClient, encodeAbiParameters, http, PublicClient, WalletClient } from "viem";
+import {
+  bytesToHex,
+  createPublicClient,
+  createWalletClient,
+  encodeAbiParameters,
+  http,
+  PublicClient,
+  WalletClient,
+} from "viem";
 import { formatAbiParameter } from "abitype";
-import { UniverseConfig } from "./config.js";
 import fs from "fs";
 import path from "path";
 import { OptionValues } from "commander";
@@ -9,8 +16,12 @@ import { privateKeyToAccount } from "viem/accounts";
 import promptSync from "prompt-sync";
 import os from "os";
 import JSON5 from "json5";
-import { AbiFunctionDoc } from "./abi.js";
 import { fileURLToPath } from "url";
+import { isHex, hexToU8a } from "@polkadot/util";
+import { base64Decode } from "@polkadot/util-crypto/base64";
+import { decodePair } from "@polkadot/keyring/pair/decode";
+import { AbiFunctionDoc } from "./abi.js";
+import { UniverseConfig } from "./config.js";
 
 export const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -54,61 +65,46 @@ export function stringify(o: unknown) {
   return JSON5.stringify(o, replacer);
 }
 
-export async function getClients(
+export async function getClientsEth(
   uniConf: UniverseConfig,
   opts: OptionValues
 ): Promise<{ publicClient: PublicClient; walletClient: WalletClient }> {
   const transport = http(uniConf.rpcUrl);
   const publicClient: PublicClient = createPublicClient({ transport });
-  const privateKey = await readPrivateKey(opts);
+  const privateKey = await readPrivateKeyEth(opts);
   const account = privateKeyToAccount(privateKey);
   const walletClient: WalletClient = createWalletClient({ account, transport });
   return { publicClient, walletClient };
 }
 
-export async function readPrivateKey(opts: OptionValues) {
+export async function readPrivateKeyEth(opts: OptionValues) {
   if (opts.privateKey) {
     return opts.privateKey.startsWith("0x") ? opts.privateKey : `0x${opts.privateKey}`;
   } else if (opts.account) {
     const keystorePath = resolveKeystoreFile(opts.account, opts);
     const keystore = loadKeystore(keystorePath);
-    
-    // Determine keystore type
-    const isSubstrateKeystore = keystore.encoding || keystore.meta;
-    const isEthereumKeystore = keystore.crypto || keystore.Crypto;
-    
-    if (isSubstrateKeystore) {
-      // Check if it's an Ethereum type Substrate keystore
-      if (keystore.meta?.isEthereum || keystore.meta?.type === "ethereum") {
-        // Handle Substrate keystore with Ethereum type
-        const password = getKeystorePassword(opts, keystore);
-        // Implementation for Substrate keystore with Ethereum type would go here
-        // This is a placeholder as the actual implementation would depend on specific libraries
-        throw new Error("Substrate keystore with Ethereum type support not implemented");
-      } else {
-        throw new Error("Substrate keystore without Ethereum type cannot be used for Ethereum transactions");
-      }
-    } else if (isEthereumKeystore) {
-      // Standard Ethereum keystore
-      const password = getKeystorePassword(opts, keystore);
+
+    if (keystore.crypto || keystore.Crypto) {
+      // for Ethereum keystores
+      const password = getPassword(opts);
       const wallet = await Wallet.fromEncryptedJson(JSON.stringify(keystore), password);
       return wallet.privateKey;
+    } else if (keystore.encoding || keystore.meta) {
+      // for Substrate keystores
+      if (keystore.meta?.isEthereum || keystore.meta?.type === "ethereum") {
+        const password = getPassword(opts);
+        const pair = decodeSubstratePair(keystore, password);
+        return bytesToHex(pair.secretKey);
+      } else {
+        throw new Error("Not an Ethereum account");
+      }
     } else {
+      // Not supported for now
       throw new Error("Unknown keystore format");
     }
   } else {
-    throw new Error(`--account or --private-key not specified`);
+    throw new Error(`Neither account nor private key specified`);
   }
-}
-
-function getKeystorePassword(opts: OptionValues, keystore: any): string {
-  return opts.password
-    ? opts.password
-    : opts.passwordFile
-      ? fs.readFileSync(opts.passwordFile, "utf8").trim()
-      : keystore.crypto || keystore.Crypto
-        ? promptSync({ sigint: true })("Enter password to decrypt keystore: ", { echo: "" })
-        : undefined;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -187,4 +183,14 @@ export function getPasswordConfirm(opts: OptionValues): string {
     throw new Error(`Error: Passwords do not match`);
   }
   return password;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function decodeSubstratePair(keystore: any, password: string) {
+  const encodedRaw = keystore.encoded;
+  let encodingType = keystore.encoding.type;
+  encodingType = !Array.isArray(encodingType) ? [encodingType] : encodingType;
+  const encoded = isHex(encodedRaw) ? hexToU8a(encodedRaw) : base64Decode(encodedRaw);
+  const decoded = decodePair(password, encoded, encodingType);
+  return decoded;
 }

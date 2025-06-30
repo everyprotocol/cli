@@ -1,6 +1,6 @@
 import { Command, OptionValues } from "commander";
 import { defaultWriteFunctionOptions } from "./cmds.js";
-import { getClients, stringify } from "./utils.js";
+import { getClientsEth, stringify } from "./utils.js";
 import { getUniverseConfig, UniverseConfig } from "./config.js";
 import { Address, parseEventLogs } from "viem";
 import { abi } from "./abi.js";
@@ -54,7 +54,7 @@ async function sendTransaction(
   functionName: string,
   args: any[] /* eslint-disable-line @typescript-eslint/no-explicit-any*/
 ) {
-  const { publicClient, walletClient } = await getClients(conf, opts);
+  const { publicClient, walletClient } = await getClientsEth(conf, opts);
   const { request } = await publicClient.simulateContract({
     address,
     abi,
