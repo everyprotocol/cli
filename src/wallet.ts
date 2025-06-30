@@ -1,12 +1,10 @@
 import { Command } from "commander";
 import { Keyring } from "@polkadot/keyring";
 import { mnemonicGenerate, cryptoWaitReady } from "@polkadot/util-crypto";
-import { isHex, hexToU8a } from "@polkadot/util";
-import { base64Decode } from "@polkadot/util-crypto/base64";
-import { decodePair } from "@polkadot/keyring/pair/decode";
 import { bytesToHex } from "viem";
 import * as fs from "fs";
 import {
+  decodeSubstratePair,
   getPassword,
   getPasswordConfirm,
   loadKeystore,
@@ -14,13 +12,6 @@ import {
   resolveKeystoreFile,
   saveKeystore,
 } from "./utils.js";
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function decryptPrivateKey(encodedRaw: string, password: string | undefined, encType: any) {
-  const encoded = isHex(encodedRaw) ? hexToU8a(encodedRaw) : base64Decode(encodedRaw);
-  const decoded = decodePair(password, encoded, encType);
-  return decoded;
-}
 
 // Wallet commands
 export function genWalletCommands() {
@@ -104,9 +95,7 @@ export function genWalletCommands() {
 
       let decoded;
       if (options.decrypt) {
-        const type = keyData.encoding.type;
-        const encType = !Array.isArray(type) ? [type] : type;
-        decoded = decryptPrivateKey(keyData.encoded, password, encType);
+        decoded = decodeSubstratePair(keyData, password);
       }
 
       let keystoreDisplay = "~/.every/keystores";

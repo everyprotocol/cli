@@ -186,7 +186,7 @@ export function getPasswordConfirm(opts: OptionValues): string {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function decodeSubstratePair(keystore: any, password: string) {
+export function decodeSubstratePair(keystore: any, password?: string) {
   const encodedRaw = keystore.encoded;
   let encodingType = keystore.encoding.type;
   encodingType = !Array.isArray(encodingType) ? [encodingType] : encodingType;
