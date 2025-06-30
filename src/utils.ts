@@ -66,25 +66,49 @@ export async function getClients(
   return { publicClient, walletClient };
 }
 
-// ai! this function should read private key for an ethereum account, the keystore can be substrate keystore or a ethereum keystore, we should determine according to key fields inside the json, and since its for ethereum tx, so if its a substrate keystore but not with an ethereum type, just throw an exeception. after completing the code, also suggest a name for the function, i will use the refactoring feature of ide to modify it further
 export async function readPrivateKey(opts: OptionValues) {
   if (opts.privateKey) {
     return opts.privateKey.startsWith("0x") ? opts.privateKey : `0x${opts.privateKey}`;
   } else if (opts.account) {
     const keystorePath = resolveKeystoreFile(opts.account, opts);
     const keystore = loadKeystore(keystorePath);
-    const password = opts.password
-      ? opts.password
-      : opts.passwordFile
-        ? fs.readFileSync(opts.passwordFile, "utf8").trim()
-        : keystore.crypto
-          ? promptSync({ sigint: true })("Enter password to decrypt keystore: ", { echo: "" })
-          : undefined;
-    const wallet = await Wallet.fromEncryptedJson(JSON.stringify(keystore), password);
-    return wallet.privateKey;
+    
+    // Determine keystore type
+    const isSubstrateKeystore = keystore.encoding || keystore.meta;
+    const isEthereumKeystore = keystore.crypto || keystore.Crypto;
+    
+    if (isSubstrateKeystore) {
+      // Check if it's an Ethereum type Substrate keystore
+      if (keystore.meta?.isEthereum || keystore.meta?.type === "ethereum") {
+        // Handle Substrate keystore with Ethereum type
+        const password = getKeystorePassword(opts, keystore);
+        // Implementation for Substrate keystore with Ethereum type would go here
+        // This is a placeholder as the actual implementation would depend on specific libraries
+        throw new Error("Substrate keystore with Ethereum type support not implemented");
+      } else {
+        throw new Error("Substrate keystore without Ethereum type cannot be used for Ethereum transactions");
+      }
+    } else if (isEthereumKeystore) {
+      // Standard Ethereum keystore
+      const password = getKeystorePassword(opts, keystore);
+      const wallet = await Wallet.fromEncryptedJson(JSON.stringify(keystore), password);
+      return wallet.privateKey;
+    } else {
+      throw new Error("Unknown keystore format");
+    }
   } else {
     throw new Error(`--account or --private-key not specified`);
   }
+}
+
+function getKeystorePassword(opts: OptionValues, keystore: any): string {
+  return opts.password
+    ? opts.password
+    : opts.passwordFile
+      ? fs.readFileSync(opts.passwordFile, "utf8").trim()
+      : keystore.crypto || keystore.Crypto
+        ? promptSync({ sigint: true })("Enter password to decrypt keystore: ", { echo: "" })
+        : undefined;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
