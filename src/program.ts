@@ -3,6 +3,7 @@ import { generateCommands } from "./cmdgen.js";
 import { RenamingCommand } from "./cmds.js";
 import { version } from "./utils.js";
 import { genWalletCommands } from "./wallet.js";
+import { genMatterCommand } from "./matter.js";
 
 function buildProgram() {
   const subCmds = generateCommands();
@@ -36,6 +37,7 @@ function buildProgram() {
   program.addCommand(objectCmd);
   program.addCommand(mintPolicyCmd);
   program.addCommand(genWalletCommands());
+  program.addCommand(genMatterCommand());
 
   return program;
 }
