@@ -66,6 +66,7 @@ export async function getClients(
   return { publicClient, walletClient };
 }
 
+// ai! this function should read private key for an ethereum account, the keystore can be substrate keystore or a ethereum keystore, we should determine according to key fields inside the json, and since its for ethereum tx, so if its a substrate keystore but not with an ethereum type, just throw an exeception. after completing the code, also suggest a name for the function, i will use the refactoring feature of ide to modify it further
 export async function readPrivateKey(opts: OptionValues) {
   if (opts.privateKey) {
     return opts.privateKey.startsWith("0x") ? opts.privateKey : `0x${opts.privateKey}`;
