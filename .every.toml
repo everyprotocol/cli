@@ -2,8 +2,14 @@
 # This file can be overridden by placing a .every.toml file in your home directory
 # or in the current working directory
 [universes.local]
-name = "local"
-rpc_url = "http://127.0.0.1:8545"
+id = 31337
+rpc = "http://127.0.0.1:8545"
+explorer = "http://127.0.0.1:8545"
+
+[universes.local.observer]
+rpc = "ws://localhost:9944"
+gateway = "http://every.im.local"
+explorer = "http://every.im.local"
 
 [universes.local.contracts]
 SetRegistry = "0x854C35Fd2b65fE9fcE71dddE91De8c3e1A7Dc8Ae"

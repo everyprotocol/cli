@@ -22,6 +22,7 @@ import { base64Decode } from "@polkadot/util-crypto/base64";
 import { decodePair } from "@polkadot/keyring/pair/decode";
 import { AbiFunctionDoc } from "./abi.js";
 import { UniverseConfig } from "./config.js";
+import Keyring from "@polkadot/keyring";
 
 export const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -69,7 +70,7 @@ export async function getClientsEth(
   uniConf: UniverseConfig,
   opts: OptionValues
 ): Promise<{ publicClient: PublicClient; walletClient: WalletClient }> {
-  const transport = http(uniConf.rpcUrl);
+  const transport = http(uniConf.rpc);
   const publicClient: PublicClient = createPublicClient({ transport });
   const privateKey = await readPrivateKeyEth(opts);
   const account = privateKeyToAccount(privateKey);
@@ -193,4 +194,16 @@ export function decodeSubstratePair(keystore: any, password?: string) {
   const encoded = isHex(encodedRaw) ? hexToU8a(encodedRaw) : base64Decode(encodedRaw);
   const decoded = decodePair(password, encoded, encodingType);
   return decoded;
+}
+
+export function getSubstrateAccountPair(flags: OptionValues) {
+  const keyFile = resolveKeystoreFile(flags.account, flags);
+  const keyData = loadKeystore(keyFile);
+  const keyring = new Keyring();
+  const pair = keyring.createFromJson(keyData);
+  if (pair.isLocked) {
+    const password = getPassword(flags);
+    pair.unlock(password);
+  }
+  return pair;
 }

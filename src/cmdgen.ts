@@ -95,7 +95,7 @@ const setContractObjectCmdConfig: CommandConfig = {
     const rawArgs = checkArguments(ctx.cmd.args, ctx.cmdAbi);
     const [set, id] = rawArgs[0].split(".");
     const args = [JSON5.parse(id), ...rawArgs.slice(1)];
-    const publicClient = createPublicClient({ transport: http(ctx.conf.rpcUrl) });
+    const publicClient = createPublicClient({ transport: http(ctx.conf.rpc) });
     const address = (await publicClient.readContract({
       address: ctx.conf.contracts["SetRegistry"] as Address,
       abi: abi.setContract,
@@ -114,7 +114,7 @@ const objectUriTxnPrepare = async function (ctx: CommandContext): Promise<{
   const rawArgs = checkArguments(ctx.cmd.args, ctx.cmdAbi);
   // const [set, id] = rawArgs[0].split(".");
   const set = rawArgs[0].split(".")[0];
-  const publicClient = createPublicClient({ transport: http(ctx.conf.rpcUrl) });
+  const publicClient = createPublicClient({ transport: http(ctx.conf.rpc) });
   const address = (await publicClient.readContract({
     address: ctx.conf.contracts["SetRegistry"] as Address,
     abi: abi.setContract,

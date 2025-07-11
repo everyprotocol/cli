@@ -1,10 +1,12 @@
-import { Command, Option } from "commander";
+import { Command } from "commander";
 import { ApiPromise, WsProvider } from "@polkadot/api";
 import "@polkadot/api-augment/substrate";
 import * as fs from "fs";
 import * as path from "path";
 import { getUniverseConfig } from "./config.js";
-import { decodeSubstratePair, getPassword, loadKeystore, resolveKeystoreFile } from "./utils.js";
+import { getSubstrateAccountPair } from "./utils.js";
+import { decodeAddress } from "@polkadot/util-crypto";
+import { u8aFixLength } from "@polkadot/util";
 
 interface Receipt {
   txHash: string;
@@ -19,11 +21,24 @@ interface Transaction {
   receipt: Promise<Receipt>;
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: any) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
 async function submitTransaction(api: any, tx: any, pair: any): Promise<Transaction> {
-  const pTxn = Promise.withResolvers<Transaction>();
-  const pReceipt = Promise.withResolvers<Receipt>();
-  const nonce = await api.rpc.system.accountNextIndex(pair.address);
-  
+  // const pTxn = Promise.withResolvers<Transaction>();
+  // const pReceipt = Promise.withResolvers<Receipt>();
+  const pTxn = createDeferred<Transaction>();
+  const pReceipt = createDeferred<Receipt>();
+  const accountId = u8aFixLength(decodeAddress(pair.address), 256);
+  const nonce = await api.rpc.system.accountNextIndex(accountId);
+
   const unsub = await tx.signAndSend(pair, { nonce }, ({ events = [], status, txHash, txIndex, blockNumber }: any) => {
     if (status.isReady) {
       pTxn.resolve({ txHash: txHash.toHex(), receipt: pReceipt.promise });
@@ -38,7 +53,7 @@ async function submitTransaction(api: any, tx: any, pair: any): Promise<Transact
       unsub();
     }
   });
-  
+
   return await pTxn.promise;
 }
 
@@ -71,9 +86,7 @@ function guessContentType(filePath: string): string {
 }
 
 export function genMatterCommand() {
-  const cmd = new Command()
-    .name("matter")
-    .description("Register matter on the Substrate chain");
+  const cmd = new Command().name("matter").description("Manage matters");
 
   cmd
     .command("register")
@@ -87,12 +100,12 @@ export function genMatterCommand() {
     .option("--password-file <file>", "File containing the password to decrypt the keystore")
     .action(async (files, options) => {
       const materials = [];
-      
+
       // Process each file argument
       for (const file of files) {
         let [filePath, hasher_, contentType] = file.split(":");
         const hasher = hasher_ ? Number(hasher_) : Number(options.hasher) || 1;
-        
+
         if (!contentType) {
           if (options.contentType) {
             contentType = options.contentType;
@@ -100,13 +113,13 @@ export function genMatterCommand() {
             contentType = guessContentType(filePath);
           }
         }
-        
+
         materials.push({ filePath, hasher, contentType });
       }
 
       // Get universe configuration
       const conf = getUniverseConfig(options);
-      if (!conf.pre_rpc_url) {
+      if (!conf.observer.rpc) {
         throw new Error("pre_rpc_url not configured in universe");
       }
 
@@ -114,15 +127,15 @@ export function genMatterCommand() {
       if (!options.account) {
         throw new Error("Account must be specified with --account");
       }
-      
-      const keystorePath = resolveKeystoreFile(options.account, options);
-      const keystore = loadKeystore(keystorePath);
-      const password = getPassword(options);
-      const accountPair = decodeSubstratePair(keystore, password);
+
+      // const keystorePath = resolveKeystoreFile(options.account, options);
+      // const keystore = loadKeystore(keystorePath);
+      // const password = getPassword(options);
+      const accountPair = getSubstrateAccountPair(options);
 
       // Connect to the Substrate node
-      console.log(`Connecting to ${conf.pre_rpc_url}...`);
-      const provider = new WsProvider(conf.pre_rpc_url);
+      console.log(`Connecting to ${conf.observer.rpc}...`);
+      const provider = new WsProvider(conf.observer.rpc);
       const api = await ApiPromise.create({ provider });
       await api.isReady;
       console.log("Connected to Substrate node");
@@ -132,15 +145,15 @@ export function genMatterCommand() {
       // Submit transactions for each material
       for (const { filePath, hasher, contentType } of materials) {
         console.log(`Processing ${filePath}: content-type=${contentType}, hasher=${hasher}`);
-        
+
         const content = fs.readFileSync(filePath);
         const contentRaw = api.createType("Raw", content, content.length);
-        const call = api.tx.previous.addMaterial(hasher, contentType, contentRaw);
-        
+        const call = api.tx.matter.register(hasher, contentType, contentRaw);
+
         console.log(`Submitting transaction for ${filePath}...`);
         const txn = await submitTransaction(api, call, accountPair);
         console.log(`Transaction submitted: ${txn.txHash}`);
-        
+
         txns.push({ txn, filePath });
       }
 
@@ -148,19 +161,19 @@ export function genMatterCommand() {
       for (const { txn, filePath } of txns) {
         console.log(`Waiting for ${filePath} to be finalized...`);
         const receipt = await txn.receipt;
-        
+
         const event = findEvent(receipt.events, "MaterialAdded");
         if (event) {
           const hash = event.data[0].toString();
           console.log(`${filePath} finalized in block ${receipt.blockHash}`);
           console.log(`  Matter hash: ${hash}`);
-          
-          if (conf.preimage_gateway) {
-            console.log(`  Preimage: ${conf.preimage_gateway}/m/${hash}`);
+
+          if (conf.observer.gateway) {
+            console.log(`  Preimage: ${conf.observer.gateway}/m/${hash}`);
           }
-          
-          if (conf.pre_explorer_url) {
-            console.log(`  Transaction: ${conf.pre_explorer_url}/extrinsic/${receipt.blockNumber}-${receipt.txIndex}`);
+
+          if (conf.observer.explorer) {
+            console.log(`  Transaction: ${conf.observer.explorer}/extrinsic/${receipt.blockNumber}-${receipt.txIndex}`);
           }
         } else {
           console.log(`${filePath} finalized, but no MaterialAdded event found`);

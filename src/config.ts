@@ -7,7 +7,14 @@ import { __dirname } from "./utils.js";
 
 export interface UniverseConfig {
   name: string;
-  rpcUrl: string;
+  id: number;
+  rpc: string;
+  explorer: string;
+  observer: {
+    rpc: string;
+    explorer: string;
+    gateway: string;
+  };
   contracts: Record<string, string>;
 }
 
@@ -55,7 +62,10 @@ function loadProtocolConfig(): EveryConfig {
           // console.log(name, uni);
           mergedConfig.universes[name] = {
             name: name,
-            rpcUrl: uni.rpc_url,
+            id: uni.id,
+            rpc: uni.rpc,
+            explorer: uni.explorer,
+            observer: uni.observer,
             contracts: uni.contracts || {},
           };
         }

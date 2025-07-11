@@ -1,0 +1,31 @@
+name: Node.js Package
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: ".bun-version"
+      - run: bun install --frozen-lockfile
+      - run: bun test
+
+  publish-npm:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: ".bun-version"
+          registry-url: https://registry.npmjs.org/
+      - run: bun install --frozen-lockfile
+      - run: bun publish
+        env:
+          NPM_CONFIG_TOKEN: ${{secrets.NPM_TOKEN}}

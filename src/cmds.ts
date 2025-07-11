@@ -73,7 +73,7 @@ const defaultConfig = {
     const abi = [ctx.txnAbi, ...ctx.nonFuncs];
     const functionName = ctx.txnAbi.name;
     if (isRead) {
-      const publicClient = createPublicClient({ transport: http(ctx.conf.rpcUrl) });
+      const publicClient = createPublicClient({ transport: http(ctx.conf.rpc) });
       const result = await publicClient.readContract({ address, abi, functionName, args });
       console.log(`Result:`, result);
     } else {
