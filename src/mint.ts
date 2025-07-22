@@ -5,12 +5,11 @@ import { getUniverseConfig } from "./config.js";
 import { Address, parseEventLogs, parseUnits } from "viem";
 import { abi } from "./abi.js";
 
-// ai! add a --no-minter option to support mint from set directly
-// when --no-minter, --auth and --policy should not be set, and the target contract address is setContract, the function to call is 'create(address to, uint64 id, bytes calldata data)'
 export function genMintCommand() {
   const cmd = new Command()
     .name("mint")
-    .description("Mint an object via ObjectMinter")
+    .description("Mint an object via ObjectMinter or directly from set")
+    .option("--no-minter", "mint directly from set contract instead of using ObjectMinter")
     .option("--auth <data>", "authorization data, if needed for a permissioned mint", "0x")
     .option("--policy <index>", "the index number of the mint policy", "0")
     .option("--value <amount>", "the amount of ETH to send together", "0")
@@ -26,7 +25,6 @@ async function action(this: Command) {
   const opts = this.opts();
   const args0 = this.args;
   const conf = getUniverseConfig(opts);
-  const objectMinter = conf.contracts["ObjectMinter"] as Address;
   const setRegistry = conf.contracts["SetRegistry"] as Address;
   const { publicClient, walletClient } = await getClientsEth(conf, opts);
   const account = walletClient.account;
@@ -38,21 +36,55 @@ async function action(this: Command) {
     args: [BigInt(set)],
   })) as Address;
   const value = parseUnits(opts.value || "0", 18);
-  const { request } = await publicClient.simulateContract({
-    address: objectMinter,
-    abi: abi.mint,
-    functionName: "mint",
-    args: [
-      args0[1] as Address,
-      setContract,
-      BigInt(id),
-      (args0[2] || "0x") as `0x{string}`,
-      opts.auth || "0x",
-      Number(opts.policy || "0"),
-    ],
-    account,
-    value,
-  });
+  
+  let request;
+  
+  if (opts.minter) {
+    // Mint via ObjectMinter
+    const objectMinter = conf.contracts["ObjectMinter"] as Address;
+    ({ request } = await publicClient.simulateContract({
+      address: objectMinter,
+      abi: abi.mint,
+      functionName: "mint",
+      args: [
+        args0[1] as Address,
+        setContract,
+        BigInt(id),
+        (args0[2] || "0x") as `0x{string}`,
+        opts.auth || "0x",
+        Number(opts.policy || "0"),
+      ],
+      account,
+      value,
+    }));
+  } else {
+    // Mint directly from set contract
+    ({ request } = await publicClient.simulateContract({
+      address: setContract,
+      abi: [
+        {
+          name: "create",
+          type: "function",
+          stateMutability: "nonpayable",
+          inputs: [
+            { name: "to", type: "address" },
+            { name: "id", type: "uint64" },
+            { name: "data", type: "bytes" }
+          ],
+          outputs: []
+        }
+      ],
+      functionName: "create",
+      args: [
+        args0[1] as Address,
+        BigInt(id),
+        (args0[2] || "0x") as `0x{string}`
+      ],
+      account,
+      value,
+    }));
+  }
+  
   const hash = await walletClient.writeContract(request);
   console.log(`Transaction sent: ${hash}`);
   console.log("Transaction mining...");
@@ -60,7 +92,8 @@ async function action(this: Command) {
   console.log("Transaction mined");
 
   if (receipt.logs && receipt.logs.length > 0) {
-    const parsedLogs = parseEventLogs({ abi: abi.mint, logs: receipt.logs });
+    const abiToUse = opts.minter ? abi.mint : abi.set;
+    const parsedLogs = parseEventLogs({ abi: abiToUse, logs: receipt.logs });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     parsedLogs.forEach((log: any) => {
       console.log(" - Event", log.eventName, stringify(log.args));
