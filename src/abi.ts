@@ -49,6 +49,12 @@ export const abi = {
       "function mint(address to, address set, uint64 id, bytes memory data, bytes memory auth, uint32 policy) payable",
     ]),
     ...loadNonFuncAbiItems("ObjectMinter"),
+    ...loadNonFuncAbiItems("ISet"),
+  ],
+
+  create: [
+    ...parseAbi(["function create(address to, uint64 id0, bytes calldata data) payable"]),
+    ...loadNonFuncAbiItems("ISet"),
   ],
 
   relation: [
