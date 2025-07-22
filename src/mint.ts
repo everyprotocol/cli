@@ -5,7 +5,6 @@ import { getUniverseConfig } from "./config.js";
 import { Address, parseEventLogs, parseUnits } from "viem";
 import { abi } from "./abi.js";
 
-// ai! make '<to>' an optional option, if not set it deaults to the sender address
 export function genMintCommand() {
   const cmd = new Command()
     .name("mint")
@@ -14,8 +13,8 @@ export function genMintCommand() {
     .option("--auth <data>", "authorization data, if needed for a permissioned mint", "0x")
     .option("--policy <index>", "the index number of the mint policy", "0")
     .option("--value <amount>", "the amount of ETH to send together", "0")
+    .option("--to <address>", "address of the recipient (defaults to sender address)")
     .argument("<sid>", "scoped object ID, in form of set.id (e.g., 17.1)")
-    .argument("<to>", "address of the recipient")
     .argument("[data]", "additional mint data", "0x")
     .action(action);
   defaultWriteFunctionOptions().forEach((option) => cmd.addOption(option));
@@ -37,6 +36,10 @@ async function action(this: Command) {
     args: [BigInt(set)],
   })) as Address;
   const value = parseUnits(opts.value || "0", 18);
+  
+  // Use the provided recipient address or default to the sender's address
+  const recipientAddress = (opts.to || account.address) as Address;
+  const mintData = (args0[1] || "0x") as `0x${string}`;
 
   let hash;
   if (opts.minter) {
@@ -47,10 +50,10 @@ async function action(this: Command) {
       abi: abi.mint,
       functionName: "mint",
       args: [
-        args0[1] as Address,
+        recipientAddress,
         setContract,
         BigInt(id),
-        (args0[2] || "0x") as `0x{string}`,
+        mintData,
         opts.auth || "0x",
         Number(opts.policy || "0"),
       ],
@@ -64,7 +67,7 @@ async function action(this: Command) {
       address: setContract,
       abi: abi.create,
       functionName: "create",
-      args: [args0[1] as Address, BigInt(id), (args0[2] || "0x") as `0x{string}`],
+      args: [recipientAddress, BigInt(id), mintData],
       account,
       value,
     });
