@@ -5,6 +5,8 @@ import { getUniverseConfig } from "./config.js";
 import { Address, parseEventLogs, parseUnits } from "viem";
 import { abi } from "./abi.js";
 
+// ai! add a --no-minter option to support mint from set directly
+// when --no-minter, --auth and --policy should not be set, and the target contract address is setContract, the function to call is 'create(address to, uint64 id, bytes calldata data)'
 export function genMintCommand() {
   const cmd = new Command()
     .name("mint")
