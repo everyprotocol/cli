@@ -5,6 +5,7 @@ import { getUniverseConfig } from "./config.js";
 import { Address, parseEventLogs, parseUnits } from "viem";
 import { abi } from "./abi.js";
 
+// ai! make '<to>' an optional option, if not set it deaults to the sender address
 export function genMintCommand() {
   const cmd = new Command()
     .name("mint")
@@ -36,13 +37,12 @@ async function action(this: Command) {
     args: [BigInt(set)],
   })) as Address;
   const value = parseUnits(opts.value || "0", 18);
-  
-  let request;
-  
+
+  let hash;
   if (opts.minter) {
     // Mint via ObjectMinter
     const objectMinter = conf.contracts["ObjectMinter"] as Address;
-    ({ request } = await publicClient.simulateContract({
+    const { request } = await publicClient.simulateContract({
       address: objectMinter,
       abi: abi.mint,
       functionName: "mint",
@@ -56,43 +56,29 @@ async function action(this: Command) {
       ],
       account,
       value,
-    }));
+    });
+    hash = await walletClient.writeContract(request);
   } else {
     // Mint directly from set contract
-    ({ request } = await publicClient.simulateContract({
+    const { request } = await publicClient.simulateContract({
       address: setContract,
-      abi: [
-        {
-          name: "create",
-          type: "function",
-          stateMutability: "nonpayable",
-          inputs: [
-            { name: "to", type: "address" },
-            { name: "id", type: "uint64" },
-            { name: "data", type: "bytes" }
-          ],
-          outputs: []
-        }
-      ],
+      abi: abi.create,
       functionName: "create",
-      args: [
-        args0[1] as Address,
-        BigInt(id),
-        (args0[2] || "0x") as `0x{string}`
-      ],
+      args: [args0[1] as Address, BigInt(id), (args0[2] || "0x") as `0x{string}`],
       account,
       value,
-    }));
+    });
+    hash = await walletClient.writeContract(request);
   }
-  
-  const hash = await walletClient.writeContract(request);
+
+  // const hash = await walletClient.writeContract(request);
   console.log(`Transaction sent: ${hash}`);
   console.log("Transaction mining...");
   const receipt = await publicClient.waitForTransactionReceipt({ hash });
   console.log("Transaction mined");
 
   if (receipt.logs && receipt.logs.length > 0) {
-    const abiToUse = opts.minter ? abi.mint : abi.set;
+    const abiToUse = opts.minter ? abi.mint : abi.create;
     const parsedLogs = parseEventLogs({ abi: abiToUse, logs: receipt.logs });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     parsedLogs.forEach((log: any) => {
