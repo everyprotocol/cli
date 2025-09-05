@@ -4,9 +4,10 @@ import "@polkadot/api-augment/substrate";
 import * as fs from "fs";
 import * as path from "path";
 import { getUniverseConfig } from "./config.js";
-import { getSubstrateAccountPair } from "./utils.js";
+import { getPassword, getSubstrateAccountPair, loadKeystore, resolveKeystoreFile } from "./utils.js";
 import { decodeAddress } from "@polkadot/util-crypto";
 import { u8aFixLength } from "@polkadot/util";
+import { UnifiedKeystore } from "./unified-keystore.js";
 
 interface Receipt {
   txHash: string;
@@ -98,6 +99,7 @@ export function genMatterCommand() {
     .option("-a, --account <account>", "Name of the keystore to sign the transaction")
     .option("-p, --password [password]", "Password to decrypt the keystore")
     .option("--password-file <file>", "File containing the password to decrypt the keystore")
+    .option("-f, --foundry", "use foundry keystore directory (~/.foundry/keystores)")
     .action(async (files, options) => {
       const materials = [];
 
@@ -127,11 +129,16 @@ export function genMatterCommand() {
       if (!options.account) {
         throw new Error("Account must be specified with --account");
       }
+      const file = resolveKeystoreFile(options.account, options);
+      const keyData = loadKeystore(file);
+      const password = getPassword(options);
+      const keystore = await UnifiedKeystore.fromJSON(keyData, password);
+      const accountPair = await keystore.pair();
 
       // const keystorePath = resolveKeystoreFile(options.account, options);
       // const keystore = loadKeystore(keystorePath);
       // const password = getPassword(options);
-      const accountPair = getSubstrateAccountPair(options);
+      // const accountPair = getSubstrateAccountPair(options);
 
       // Connect to the Substrate node
       console.log(`Connecting to ${conf.observer.rpc}...`);
@@ -148,7 +155,7 @@ export function genMatterCommand() {
 
         const content = fs.readFileSync(filePath);
         const contentRaw = api.createType("Raw", content, content.length);
-        const call = api.tx.matter.register(hasher, contentType, contentRaw);
+        const call = api.tx.every.matterRegister(hasher, contentType, contentRaw);
 
         console.log(`Submitting transaction for ${filePath}...`);
         const txn = await submitTransaction(api, call, accountPair);

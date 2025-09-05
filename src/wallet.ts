@@ -4,7 +4,6 @@ import { mnemonicGenerate, cryptoWaitReady } from "@polkadot/util-crypto";
 import { bytesToHex } from "viem";
 import * as fs from "fs";
 import {
-  decodeSubstratePair,
   getPassword,
   getPasswordConfirm,
   loadKeystore,
@@ -12,6 +11,7 @@ import {
   resolveKeystoreFile,
   saveKeystore,
 } from "./utils.js";
+import { UnifiedKeystore } from "./unified-keystore.js";
 
 // Wallet commands
 export function genWalletCommands() {
@@ -21,7 +21,7 @@ export function genWalletCommands() {
   const listCmd = new Command()
     .name("list")
     .description("List all wallets")
-    .option("--foundry", "use foundry keystore directory (~/.foundry/keystores)")
+    .option("-f, --foundry", "use foundry keystore directory (~/.foundry/keystores)")
     .option("--dir <dir>", "specify a custom keystore directory")
     .action(async (options) => {
       const dir = resolveKeystoreDir(options);
@@ -37,7 +37,6 @@ export function genWalletCommands() {
     .option("-p, --password <password>", "password to encrypt the keystore")
     .option("-P, --password-file <file>", "password file")
     .option("--dir <dir>", "specify keystore directory")
-    .option("--foundry", "use foundry keystore directory (~/.foundry/keystores)")
     .argument("<name>", "name of the wallet")
     .action(async (name, options) => {
       const password = getPasswordConfirm(options);
@@ -57,7 +56,7 @@ export function genWalletCommands() {
     .option("-p, --password <password>", "password to encrypt the keystore")
     .option("-P, --password-file <file>", "password file")
     .option("--dir <dir>", "specify a custom keystore directory")
-    .option("--foundry", "use foundry keystore directory (~/.foundry/keystores)")
+    .option("-f, --foundry", "use foundry keystore directory (~/.foundry/keystores)")
     .argument("<name>", "name of the wallet")
     .argument("<suri>", "secret URI")
     .action(async (name, suri, options) => {
@@ -78,42 +77,45 @@ export function genWalletCommands() {
     .option("-P, --password-file <file>", "file containing the password")
     .option("-x, --decrypt", "also decrypt the private key", false)
     .option("--dir <dir>", "specify a custom keystore directory")
-    .option("--foundry", "use foundry keystore directory (~/.foundry/keystores)")
+    .option("-f, --foundry", "use foundry keystore directory (~/.foundry/keystores)")
     .argument("<name>", "name of the wallet")
     .action(async (name, options) => {
       const file = resolveKeystoreFile(name, options);
       const keyData = loadKeystore(file);
-      await cryptoWaitReady();
-      const keyring = new Keyring({ type: options.type });
-      const account = keyring.addFromJson(keyData);
+      const password = getPassword(options);
+      const keystore = await UnifiedKeystore.fromJSON(keyData, password);
+      // const pair = await keystore.pair();
+      // await cryptoWaitReady();
+      // const keyring = new Keyring({ type: options.type });
+      // const account = keyring.addFromJson(keyData);
 
-      let password;
-      if (account.isLocked) {
-        password = getPassword(options);
-        account.unlock(password);
-      }
+      // let password;
+      // if (account.isLocked) {
+      //   password = getPassword(options);
+      //   account.unlock(password);
+      // }
 
       let decoded;
       if (options.decrypt) {
-        decoded = decodeSubstratePair(keyData, password);
+        decoded = await keystore.privateKey();
       }
 
-      let keystoreDisplay = "~/.every/keystores";
+      let dir = "~/.every/keystores";
       if (options.foundry) {
-        keystoreDisplay = "~/.foundry/keystores";
+        dir = "~/.foundry/keystores";
       } else if (options.dir) {
-        keystoreDisplay = options.dir;
+        dir = options.dir;
       }
-      console.log(`  Keystore: ${keystoreDisplay}`);
-      console.log(`    Wallet: ${name}`);
-      console.log(`      Type: ${account.type}`);
-      console.log(`      Meta: ${JSON.stringify(account.meta)}`);
-      console.log(`   Address: ${account.address}`);
-      console.log(`AddressRaw: ${bytesToHex(account.addressRaw)}`);
-      console.log(` PublicKey: ${bytesToHex(account.publicKey)}`);
+      console.log(`   Keystore: ${dir}/${name}`);
+      console.log(` Store Type: ${keystore.type()}`);
+      console.log(`   Key Type: ${keystore.keyType()}`);
+      // console.log(`      Meta: ${JSON.stringify(account.meta)}`);
+      console.log(`    Address: ${await keystore.address()}`);
+      // console.log(`AddressRaw: ${bytesToHex(account.addressRaw)}`);
+      console.log(` Public Key: ${bytesToHex(await keystore.publicKey())}`);
 
       if (decoded) {
-        console.log(` SecretKey: ${bytesToHex(decoded.secretKey)}`);
+        console.log(`Private Key: ${bytesToHex(decoded)}`);
       }
     });
 
