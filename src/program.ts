@@ -20,7 +20,7 @@ function buildProgram() {
     .description("create and interact with objects")
     .addCommands(subCmds.object);
   const mintPolicyCmd = new RenamingCommand()
-    .name("mintpolicy")
+    .name("minter")
     .description("manage mint policies")
     .addCommands(subCmds.mintpolicy);
 
@@ -29,15 +29,16 @@ function buildProgram() {
     .description("CLI for interacting with Every Protocol")
     .version(version())
     .showHelpAfterError(true);
-  program.addCommand(kindCmd);
+
+  program.addCommand(genMatterCommand());
   program.addCommand(setCmd);
+  program.addCommand(kindCmd);
   program.addCommand(relationCmd);
-  program.addCommand(uniqueCmd);
   program.addCommand(valueCmd);
+  program.addCommand(uniqueCmd);
   program.addCommand(objectCmd);
   program.addCommand(mintPolicyCmd);
   program.addCommand(genWalletCommands());
-  program.addCommand(genMatterCommand());
 
   return program;
 }

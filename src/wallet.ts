@@ -33,7 +33,7 @@ export function genWalletCommands() {
   const generateCmd = new Command()
     .name("new")
     .description("Generate a new wallet")
-    .option("-t, --type <type>", "key type (ed25519, sr25519, ethereum)", "sr25519")
+    .option("-t, --type <type>", "key type (sr25519, ed25519, ethereum)", "sr25519")
     .option("-p, --password <password>", "password to encrypt the keystore")
     .option("-P, --password-file <file>", "password file")
     .option("--dir <dir>", "specify keystore directory")
@@ -113,7 +113,7 @@ export function genWalletCommands() {
       console.log(` PublicKey: ${bytesToHex(account.publicKey)}`);
 
       if (decoded) {
-        console.log(`SecretKey: ${bytesToHex(decoded.secretKey)}`);
+        console.log(` SecretKey: ${bytesToHex(decoded.secretKey)}`);
       }
     });
 

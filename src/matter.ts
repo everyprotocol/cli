@@ -86,7 +86,7 @@ function guessContentType(filePath: string): string {
 }
 
 export function genMatterCommand() {
-  const cmd = new Command().name("matter").description("Manage matters");
+  const cmd = new Command().name("matter").description("manage matters");
 
   cmd
     .command("register")
