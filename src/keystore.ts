@@ -1,5 +1,5 @@
 import { Keyring } from "@polkadot/keyring";
-import type { KeyringPair } from "@polkadot/keyring/types";
+import type { KeyringPair, KeyringPair$Json } from "@polkadot/keyring/types";
 import { u8aToHex, hexToU8a, isHex } from "@polkadot/util";
 import { base64Decode, cryptoWaitReady } from "@polkadot/util-crypto";
 import { privateKeyToAccount, type PrivateKeyAccount } from "viem/accounts";
@@ -129,9 +129,7 @@ export class UnifiedKeystore {
 
     const keyring = new Keyring({ type: this._keyType });
     if (this._type === "substrate") {
-      const pair = keyring.addFromJson(
-        this._keystore as any /*eslint-disable-line @typescript-eslint/no-explicit-any*/
-      );
+      const pair = keyring.addFromJson(this._keystore as unknown as KeyringPair$Json);
       if (this._password !== undefined) {
         try {
           pair.unlock(this._password);

@@ -23,6 +23,7 @@ import { decodePair } from "@polkadot/keyring/pair/decode";
 import { AbiFunctionDoc } from "./abi.js";
 import { UniverseConfig } from "./config.js";
 import Keyring from "@polkadot/keyring";
+import { UnifiedKeystore } from "./keystore.js";
 
 export const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -206,4 +207,19 @@ export function getSubstrateAccountPair(flags: OptionValues) {
     pair.unlock(password);
   }
   return pair;
+}
+
+export async function keystoreFromOptions(options: OptionValues): Promise<UnifiedKeystore> {
+  if (!options.account) {
+    throw new Error("Account must be specified with --account");
+  }
+  return keystoreFromAccount(options.account, options);
+}
+
+export async function keystoreFromAccount(account: string, options: OptionValues): Promise<UnifiedKeystore> {
+  const file = resolveKeystoreFile(account, options);
+  const keyData = loadKeystore(file);
+  const password = getPassword(options);
+  const keystore = await UnifiedKeystore.fromJSON(keyData, password);
+  return keystore;
 }

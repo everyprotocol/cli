@@ -2,7 +2,7 @@ import { Command } from "commander";
 import { generateCommands } from "./cmdgen.js";
 import { RenamingCommand } from "./cmds.js";
 import { version } from "./utils.js";
-import { genWalletCommands } from "./wallet.js";
+import { walletCmd } from "./wallet.js";
 import { genMatterCommand } from "./matter.js";
 
 function buildProgram() {
@@ -38,7 +38,7 @@ function buildProgram() {
   program.addCommand(uniqueCmd);
   program.addCommand(objectCmd);
   program.addCommand(mintPolicyCmd);
-  program.addCommand(genWalletCommands());
+  program.addCommand(walletCmd);
 
   return program;
 }

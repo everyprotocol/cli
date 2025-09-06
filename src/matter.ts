@@ -4,10 +4,10 @@ import "@polkadot/api-augment/substrate";
 import * as fs from "fs";
 import * as path from "path";
 import { getUniverseConfig } from "./config.js";
-import { getPassword, getSubstrateAccountPair, loadKeystore, resolveKeystoreFile } from "./utils.js";
+import { keystoreFromOptions } from "./utils.js";
 import { decodeAddress } from "@polkadot/util-crypto";
 import { u8aFixLength } from "@polkadot/util";
-import { UnifiedKeystore } from "./unified-keystore.js";
+import "./options.js";
 
 interface Receipt {
   txHash: string;
@@ -96,10 +96,11 @@ export function genMatterCommand() {
     .option("-c, --content-type <type>", "Default content type")
     .option("-h, --hasher <number>", "Default hasher", "1")
     .option("-u, --universe <universe>", "Universe name", "local")
-    .option("-a, --account <account>", "Name of the keystore to sign the transaction")
-    .option("-p, --password [password]", "Password to decrypt the keystore")
-    .option("--password-file <file>", "File containing the password to decrypt the keystore")
-    .option("-f, --foundry", "use foundry keystore directory (~/.foundry/keystores)")
+    .accountOptions()
+    // .option("-a, --account <account>", "Name of the keystore to sign the transaction")
+    // .option("-p, --password [password]", "Password to decrypt the keystore")
+    // .option("--password-file <file>", "File containing the password to decrypt the keystore")
+    // .option("-f, --foundry", "use foundry keystore directory (~/.foundry/keystores)")
     .action(async (files, options) => {
       const materials = [];
 
@@ -125,20 +126,8 @@ export function genMatterCommand() {
         throw new Error("pre_rpc_url not configured in universe");
       }
 
-      // Get account pair for signing
-      if (!options.account) {
-        throw new Error("Account must be specified with --account");
-      }
-      const file = resolveKeystoreFile(options.account, options);
-      const keyData = loadKeystore(file);
-      const password = getPassword(options);
-      const keystore = await UnifiedKeystore.fromJSON(keyData, password);
-      const accountPair = await keystore.pair();
-
-      // const keystorePath = resolveKeystoreFile(options.account, options);
-      // const keystore = loadKeystore(keystorePath);
-      // const password = getPassword(options);
-      // const accountPair = getSubstrateAccountPair(options);
+      const keystore = await keystoreFromOptions(options);
+      const pair = await keystore.pair();
 
       // Connect to the Substrate node
       console.log(`Connecting to ${conf.observer.rpc}...`);
@@ -158,7 +147,7 @@ export function genMatterCommand() {
         const call = api.tx.every.matterRegister(hasher, contentType, contentRaw);
 
         console.log(`Submitting transaction for ${filePath}...`);
-        const txn = await submitTransaction(api, call, accountPair);
+        const txn = await submitTransaction(api, call, pair);
         console.log(`Transaction submitted: ${txn.txHash}`);
 
         txns.push({ txn, filePath });
