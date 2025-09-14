@@ -21,7 +21,7 @@ import { isHex, hexToU8a } from "@polkadot/util";
 import { base64Decode } from "@polkadot/util-crypto/base64";
 import { decodePair } from "@polkadot/keyring/pair/decode";
 import { AbiFunctionDoc } from "./abi.js";
-import { UniverseConfig } from "./config.js";
+import { loadMergedConfig, Observer, UniverseConfig } from "./config.js";
 import Keyring from "@polkadot/keyring";
 import { UnifiedKeystore } from "./keystore.js";
 
@@ -222,4 +222,38 @@ export async function keystoreFromAccount(account: string, options: OptionValues
   const password = getPassword(options);
   const keystore = await UnifiedKeystore.fromJSON(keyData, password);
   return keystore;
+}
+
+export function getObserverConfig(options: OptionValues): Observer {
+  const conf = loadMergedConfig();
+
+  let observerName: string | undefined;
+  const DEFAULT_OBSERVER = "localnet";
+
+  if (options.observer) {
+    observerName = options.observer;
+  } else if (options.universe) {
+    const universe = conf.universes[options.universe];
+    if (!universe) {
+      throw new Error(
+        `Universe '${options.universe}' not found in config. Available: ${Object.keys(conf.universes).join(", ")}`
+      );
+    }
+    observerName = universe.observer;
+  } else {
+    observerName = DEFAULT_OBSERVER;
+  }
+
+  if (!observerName) {
+    throw new Error(`No observer resolved from options or config.`);
+  }
+
+  const observer = conf.observers[observerName];
+  if (!observer) {
+    throw new Error(
+      `Observer '${observerName}' not found in config. Available: ${Object.keys(conf.observers).join(", ")}`
+    );
+  }
+
+  return observer;
 }
