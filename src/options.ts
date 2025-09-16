@@ -15,8 +15,8 @@ export const optPasswordFile = new Option("--password-file <file>", "File contai
 export const optPrivateKey = new Option("-k, --private-key <key>", "Private key to sign the transaction");
 export const optFoundry = new Option("-f, --foundry", "Use foundry keystores (~/.foundry/keystores)");
 
-export const optUniverse = new Option("-u, --universe <universe>", "universe name").default("local");
-export const optNetwork = new Option("-n, --network <network>", "network name").default("localnet");
+export const optUniverse = new Option("-u, --universe <universe>", "universe name").default("anvil");
+export const optNetwork = new Option("-n, --network <network>", "network name").default("dev");
 
 export const accountOptions = [optAccount, optPassword, optPasswordFile, optFoundry];
 

@@ -24,6 +24,7 @@ import { AbiFunctionDoc } from "./abi.js";
 import { loadMergedConfig, Observer, Universe } from "./config.js";
 import Keyring from "@polkadot/keyring";
 import { UnifiedKeystore } from "./keystore.js";
+import { ApiPromise, WsProvider } from "@polkadot/api";
 
 export const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -267,4 +268,11 @@ export function getUniverseConfig(opts: OptionValues): Universe {
     throw new Error(`Universe "${universeName}" not found. Available: ${available}`);
   }
   return universe;
+}
+
+export async function getSubstrateApi(options: OptionValues): Promise<ApiPromise> {
+  const conf: Observer = getObserverConfig(options);
+  const provider = new WsProvider(conf.rpc);
+  const api = await ApiPromise.create({ provider, noInitWarn: true });
+  return api;
 }

@@ -2,7 +2,7 @@
 id = 31337
 rpc = "http://127.0.0.1:8545"
 explorer = "http://127.0.0.1:8545"
-observer = "localnet"
+observer = "dev"
 
 [universes.anvil.contracts]
 SetRegistry = "0x854C35Fd2b65fE9fcE71dddE91De8c3e1A7Dc8Ae"
@@ -11,7 +11,7 @@ KindRegistry = "0x7A8B3E5A9c227858C5917b7de8ba1684Cd868630"
 ElementRegistry = "0x8De1EE1dbAE2Ffd1CAe1e6bA83E6cAede1461507"
 ObjectMinter = "0x12CaBC370b316F247126F3Fab529Ee25e03aE226"
 
-[observers.localnet]
+[observers.dev]
 rpc = "ws://localhost:9944"
-gateway = "http://every.im.local"
+gateway = "http://localhost:3456"
 explorer = "http://every.im.local"

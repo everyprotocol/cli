@@ -1,44 +1,39 @@
 import { Command } from "commander";
-import { ApiPromise, WsProvider } from "@polkadot/api";
 import "@polkadot/api-augment/substrate";
 import * as fs from "fs";
 import * as path from "path";
 import * as JSON11 from "json11";
 import columify from "columnify";
-import { Observer } from "./config.js";
-import { getObserverConfig, keystoreFromOptions } from "./utils.js";
+import { getSubstrateApi, keystoreFromOptions } from "./utils.js";
 import { submitTransaction } from "./substrate.js";
 import { optNetwork } from "./options.js";
 
 const registerCmd = new Command("register")
   .description("Register matter on the Substrate chain")
-  .argument("<files...>", "Path to the file(s) containing the matter content")
-  .option("-c, --content-type <type>", "Default content type")
-  .option("-h, --hasher <number>", "Default hasher", "1")
+  .argument("<files...>", "Paths of matter blob files")
+  .option("--mime <string>", "Matter mime")
+  .option("--form <number>", "Matter form", "1")
   .accountOptions()
   .addOption(optNetwork)
   .action(async (files, options) => {
     const materials = [];
     for (const file of files) {
-      const [filePath, hasher_, contentType_] = file.split(":");
-      const hasher = hasher_ ? Number(hasher_) : Number(options.hasher) || 1;
-      const contentType = contentType_ || options.contentType || guessContentType(filePath);
-      materials.push({ filePath, hasher, contentType });
+      const [filePath, form_, mime_] = file.split(":");
+      const form = Number(form_ ?? options.form ?? "1");
+      const mime = mime_ || options.mime || guessContentType(filePath);
+      materials.push({ filePath, form, mime });
     }
 
-    const conf: Observer = getObserverConfig(options);
     const keystore = await keystoreFromOptions(options);
     const pair = await keystore.pair();
-    const provider = new WsProvider(conf.rpc);
-    const api = await ApiPromise.create({ provider });
+    const api = await getSubstrateApi(options);
     const txns = [];
 
-    // Submit transactions for each material
-    for (const { filePath, hasher, contentType } of materials) {
-      console.log(`Register matter: ${filePath}: mime=${contentType}, form=${hasher}`);
+    for (const { filePath, form, mime } of materials) {
       const content = fs.readFileSync(filePath);
+      console.log(`Register matter: form=${form} mime=${mime} blob=${content.length}B ${filePath}`);
       const contentRaw = api.createType("Raw", content, content.length);
-      const call = api.tx.every.matterRegister(hasher, contentType, contentRaw);
+      const call = api.tx.every.matterRegister(form, mime, contentRaw);
       console.log(`Transaction submitting...`);
       const txn = await submitTransaction(api, call, pair);
       console.log(`Transaction submitted: ${txn.txHash}`);
@@ -48,9 +43,7 @@ const registerCmd = new Command("register")
     for (const { txn, filePath } of txns) {
       const r = await txn.receipt;
       const header = await api.rpc.chain.getHeader(r.blockHash);
-      const block = { block: header.number, hash: r.blockHash };
-      console.log(`Transaction confirmed: ${txn.txHash} ${filePath}`);
-      console.log(`At block: ${JSON11.stringify(block)}`);
+      console.log(`Transaction confirmed: ${txn.txHash} block=${header.number} ${filePath}`);
       const events = r.events.map((e) => [e.event.method, JSON11.stringify(e.event.data.toJSON())]);
       console.log(columify(events, { showHeaders: false }));
     }
