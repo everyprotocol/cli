@@ -4,6 +4,7 @@ import { RenamingCommand } from "./cmds.js";
 import { version } from "./utils.js";
 import { walletCmd } from "./wallet.js";
 import { genMatterCommand } from "./matter.js";
+import { balanceCmd } from "./balance.js";
 
 function buildProgram() {
   const subCmds = generateCommands();
@@ -38,6 +39,7 @@ function buildProgram() {
   program.addCommand(uniqueCmd);
   program.addCommand(objectCmd);
   program.addCommand(mintPolicyCmd);
+  program.addCommand(balanceCmd);
   program.addCommand(walletCmd);
 
   return program;
