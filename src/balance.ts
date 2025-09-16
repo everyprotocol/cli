@@ -7,12 +7,12 @@ import columify from "columnify";
 import { Observer } from "./config.js";
 import { getObserverConfig, keystoreFromOptions } from "./utils.js";
 import { submitTransaction } from "./substrate.js";
-import "./options.js";
+import { optNetwork } from "./options.js";
 
 const queryCmd = new Command("query")
   .description("Query account balance")
   .argument("<address>", "Account address (SS58 or 0x hex)")
-  .option("-n, --observer <name>", "Observer name from config", "localnet")
+  .addOption(optNetwork)
   .action(async (address, options) => {
     const conf: Observer = getObserverConfig(options);
     const provider = new WsProvider(conf.rpc);
@@ -35,7 +35,7 @@ const transferCmd = new Command("transfer")
   .argument("<address>", "Recipient account address (SS58 or 0x hex)")
   .argument("<amount>", "Amount in base units")
   .accountOptions()
-  .option("-n, --observer <name>", "Observer name from config", "localnet")
+  .addOption(optNetwork)
   .action(async (address, amount, options) => {
     const conf: Observer = getObserverConfig(options);
     const keystore = await keystoreFromOptions(options);
@@ -60,4 +60,7 @@ const transferCmd = new Command("transfer")
     api.disconnect();
   });
 
-export const balanceCmd = new Command("balance").addCommand(queryCmd).addCommand(transferCmd);
+export const balanceCmd = new Command("balance")
+  .description("Manage balances")
+  .addCommand(queryCmd)
+  .addCommand(transferCmd);

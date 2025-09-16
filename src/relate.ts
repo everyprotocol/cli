@@ -1,7 +1,7 @@
 import { Command, OptionValues } from "commander";
 import { defaultWriteFunctionOptions } from "./cmds.js";
-import { getClientsEth, stringify } from "./utils.js";
-import { getUniverseConfig, UniverseConfig } from "./config.js";
+import { getClientsEth, stringify, getUniverseConfig } from "./utils.js";
+import { Universe } from "./config.js";
 import { Address, parseEventLogs } from "viem";
 import { abi } from "./abi.js";
 
@@ -47,7 +47,7 @@ async function action(cmd: Command, functionName: string) {
 }
 
 async function sendTransaction(
-  conf: UniverseConfig,
+  conf: Universe,
   opts: OptionValues,
   address: `0x${string}`,
   abi: any /* eslint-disable-line @typescript-eslint/no-explicit-any*/,

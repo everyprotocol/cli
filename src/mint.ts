@@ -1,8 +1,7 @@
 import { Command } from "commander";
-import { defaultWriteFunctionOptions } from "./cmds.js";
-import { getClientsEth, stringify } from "./utils.js";
-import { getUniverseConfig } from "./config.js";
 import { Address, parseEventLogs, parseUnits } from "viem";
+import { defaultWriteFunctionOptions } from "./cmds.js";
+import { getClientsEth, stringify, getUniverseConfig } from "./utils.js";
 import { abi } from "./abi.js";
 
 export function genMintCommand() {

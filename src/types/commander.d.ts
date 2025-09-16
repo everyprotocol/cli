@@ -6,6 +6,7 @@ declare module "commander" {
     // networkOptions(): this;
     /** keys, accounts, derivation, etc. */
     accountOptions(): this;
+    writeContractOptions(): this;
     /** logging/verbosity/etc. */
     // commonOptions(): this;
 

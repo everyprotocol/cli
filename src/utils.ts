@@ -21,7 +21,7 @@ import { isHex, hexToU8a } from "@polkadot/util";
 import { base64Decode } from "@polkadot/util-crypto/base64";
 import { decodePair } from "@polkadot/keyring/pair/decode";
 import { AbiFunctionDoc } from "./abi.js";
-import { loadMergedConfig, Observer, UniverseConfig } from "./config.js";
+import { loadMergedConfig, Observer, Universe } from "./config.js";
 import Keyring from "@polkadot/keyring";
 import { UnifiedKeystore } from "./keystore.js";
 
@@ -68,7 +68,7 @@ export function stringify(o: unknown) {
 }
 
 export async function getClientsEth(
-  uniConf: UniverseConfig,
+  uniConf: Universe,
   opts: OptionValues
 ): Promise<{ publicClient: PublicClient; walletClient: WalletClient }> {
   const transport = http(uniConf.rpc);
@@ -230,8 +230,8 @@ export function getObserverConfig(options: OptionValues): Observer {
   let observerName: string | undefined;
   const DEFAULT_OBSERVER = "localnet";
 
-  if (options.observer) {
-    observerName = options.observer;
+  if (options.network) {
+    observerName = options.network;
   } else if (options.universe) {
     const universe = conf.universes[options.universe];
     if (!universe) {
@@ -256,4 +256,15 @@ export function getObserverConfig(options: OptionValues): Observer {
   }
 
   return observer;
+}
+
+export function getUniverseConfig(opts: OptionValues): Universe {
+  const config = loadMergedConfig();
+  const universeName = opts.universe;
+  const universe = config.universes[universeName];
+  if (!universe) {
+    const available = Object.keys(config.universes).join(", ");
+    throw new Error(`Universe "${universeName}" not found. Available: ${available}`);
+  }
+  return universe;
 }

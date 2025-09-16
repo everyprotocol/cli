@@ -3,8 +3,9 @@ import { generateCommands } from "./cmdgen.js";
 import { RenamingCommand } from "./cmds.js";
 import { version } from "./utils.js";
 import { walletCmd } from "./wallet.js";
-import { genMatterCommand } from "./matter.js";
+import { matterCmd } from "./matter.js";
 import { balanceCmd } from "./balance.js";
+import { objectSendCmd } from "./object.js";
 
 function buildProgram() {
   const subCmds = generateCommands();
@@ -19,7 +20,9 @@ function buildProgram() {
   const objectCmd = new RenamingCommand()
     .name("object")
     .description("create and interact with objects")
-    .addCommands(subCmds.object);
+    .addCommands(subCmds.object)
+    .addCommand(objectSendCmd);
+
   const mintPolicyCmd = new RenamingCommand()
     .name("minter")
     .description("manage mint policies")
@@ -31,7 +34,7 @@ function buildProgram() {
     .version(version())
     .showHelpAfterError(true);
 
-  program.addCommand(genMatterCommand());
+  program.addCommand(matterCmd);
   program.addCommand(setCmd);
   program.addCommand(kindCmd);
   program.addCommand(relationCmd);

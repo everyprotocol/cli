@@ -31,6 +31,6 @@
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
   },
-  "include": ["src", "types"],
+  "include": ["src"],
   "exclude": ["node_modules", "dist"]
 }

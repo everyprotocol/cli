@@ -1,8 +1,8 @@
 import { Argument, Command, Option, CommandOptions } from "commander";
 import { Address, createPublicClient, http, parseEventLogs, stringify } from "viem";
-import { getUniverseConfig, UniverseConfig } from "./config.js";
+import { Universe as UniverseConfig } from "./config.js";
 import { AbiEventOrError, AbiFunctionDoc } from "./abi.js";
-import { checkArguments, getClientsEth } from "./utils.js";
+import { checkArguments, getClientsEth, getUniverseConfig } from "./utils.js";
 
 export interface CommandContext {
   conf: UniverseConfig;
@@ -107,7 +107,8 @@ const defaultConfig = {
 
   txnPrepare: function (ctx: CommandContext): { address: Address; tag: string; args: unknown[] } {
     const args = checkArguments(ctx.cmd.args, ctx.cmdAbi);
-    return { address: ctx.conf.contracts[ctx.contract] as Address, tag: ctx.contract, args };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return { address: (ctx.conf.contracts as any)[ctx.contract] as Address, tag: ctx.contract, args };
   },
 };
 
