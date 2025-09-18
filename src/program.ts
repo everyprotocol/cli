@@ -6,6 +6,7 @@ import { walletCmd } from "./wallet.js";
 import { matterCmd } from "./matter.js";
 import { balanceCmd } from "./balance.js";
 import { objectSendCmd } from "./object.js";
+import { configCmd } from "./cmds/config.js";
 
 function buildProgram() {
   const subCmds = generateCommands();
@@ -44,6 +45,7 @@ function buildProgram() {
   program.addCommand(mintPolicyCmd);
   program.addCommand(balanceCmd);
   program.addCommand(walletCmd);
+  program.addCommand(configCmd);
 
   return program;
 }

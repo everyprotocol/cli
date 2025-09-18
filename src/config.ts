@@ -45,19 +45,25 @@ export function loadConfig(file: string): Config {
 }
 
 export function loadMergedConfig(): Config {
-  const configPaths = [
-    path.resolve(__dirname, "../.every.toml"),
-    path.resolve(os.homedir(), ".every.toml"),
-    path.resolve(process.cwd(), ".every.toml"),
-  ];
-  const merged: Config = { universes: {}, observers: {} };
-  const existingFiles = configPaths.filter((f) => fs.existsSync(f));
+  const [config] = _loadMergedConfig();
+  return config;
+}
 
-  if (existingFiles.length === 0) {
-    throw new Error(`No config file found. Searched in:\n  ${configPaths.join("\n  ")}`);
+export function _loadMergedConfig(): [Config, string[]] {
+  const search = [
+    ...new Set([
+      path.resolve(__dirname, "../.every.toml"),
+      path.resolve(os.homedir(), ".every.toml"),
+      path.resolve(process.cwd(), ".every.toml"),
+    ]),
+  ];
+  const files = search.filter((f) => fs.existsSync(f));
+  if (files.length === 0) {
+    throw new Error(`No config file found. Searched in:\n  ${search.join("\n  ")}`);
   }
 
-  for (const file of existingFiles) {
+  const merged: Config = { universes: {}, observers: {} };
+  for (const file of files) {
     const raw = loadConfig(file);
 
     if (raw.universes) {
@@ -79,5 +85,5 @@ export function loadMergedConfig(): Config {
     }
   }
 
-  return ConfigSchema.parse(merged);
+  return [ConfigSchema.parse(merged), files];
 }
