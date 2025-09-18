@@ -1,8 +1,10 @@
 import { Argument, Command, Option, CommandOptions } from "commander";
-import { Address, createPublicClient, http, parseEventLogs, stringify } from "viem";
+import { Address, createPublicClient, http, parseEventLogs } from "viem";
+import * as JSON11 from "json11";
 import { Universe as UniverseConfig } from "./config.js";
 import { AbiEventOrError, AbiFunctionDoc } from "./abi.js";
 import { checkArguments, getClientsEth, getUniverseConfig } from "./utils.js";
+import columnify from "columnify";
 
 export interface CommandContext {
   conf: UniverseConfig;
@@ -34,14 +36,14 @@ export interface CommandConfig {
 
 export function defaultReadFunctionOptions() {
   const options = [];
-  options.push(new Option("-u, --universe <universe>", "universe name").default("local"));
+  options.push(new Option("-u, --universe <universe>", "universe name").default("anvil"));
   options.push(new Option("--dry-run", "Simulate the command without sending a transaction"));
   return options;
 }
 
 export function defaultWriteFunctionOptions() {
   const options = [];
-  options.push(new Option("-u, --universe <universe>", "universe name").default("local"));
+  options.push(new Option("-u, --universe <universe>", "universe name").default("anvil"));
   options.push(new Option("-k, --private-key <key>", "private key to sign the transaction"));
   options.push(new Option("-a, --account <account>", "name of the keystore to sign the transaction"));
   options.push(new Option("-p, --password [password]", "password to decrypt the keystore"));
@@ -67,41 +69,36 @@ const defaultConfig = {
   cmdAction: async function (ctx: CommandContext) {
     const isRead = ctx.cmdAbi.stateMutability == "view" || ctx.cmdAbi.stateMutability == "pure";
     const opts = ctx.cmd.opts();
-    const args0 = ctx.cmd.args;
-    console.log({ args0 });
-    const { address, tag, args } = await ctx.txnPrepare(ctx);
+    // const args0 = ctx.cmd.args;
+    // console.log({ args0 });
+    const { address, args } = await ctx.txnPrepare(ctx);
     const abi = [ctx.txnAbi, ...ctx.nonFuncs];
     const functionName = ctx.txnAbi.name;
     if (isRead) {
       const publicClient = createPublicClient({ transport: http(ctx.conf.rpc) });
       const result = await publicClient.readContract({ address, abi, functionName, args });
-      console.log(`Result:`, result);
+      console.log(result);
     } else {
       const { publicClient, walletClient } = await getClientsEth(ctx.conf, opts);
       const account = walletClient.account;
-      console.log({
-        isRead,
-        address: `${address} (${tag})`,
-        account: account?.address,
-        signature: ctx.txnAbi._metadata.signature!,
-        args,
-      });
+      console.log("Transaction sending...");
       const { request } = await publicClient.simulateContract({ address, abi, functionName, args, account });
       const hash = await walletClient.writeContract(request);
       console.log(`Transaction sent: ${hash}`);
-      console.log("Transaction mining...");
+      console.log("Waiting for confirmation...");
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
-      console.log("Transaction mined");
+      console.log(`Confirmed in: block ${receipt.blockNumber}, hash ${receipt.blockHash}`);
 
+      const output: [string, string][] = [];
       if (receipt.logs && receipt.logs.length > 0) {
         const parsedLogs = parseEventLogs({ abi, logs: receipt.logs });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         parsedLogs.forEach((log: any) => {
-          console.log(" - Event", log.eventName, stringify(log.args));
+          output.push([log.eventName, JSON11.stringify(log.args)]);
         });
       }
+      console.log(columnify(output, { showHeaders: false }));
     }
-    console.log({ isRead, address: `${address} (${tag})`, signature: ctx.txnAbi._metadata.signature!, args });
     return;
   },
 

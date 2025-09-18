@@ -3,13 +3,13 @@ import "@polkadot/api-augment/substrate";
 import { FrameSystemAccountInfo } from "@polkadot/types/lookup";
 import * as JSON11 from "json11";
 import columify from "columnify";
-import { getSubstrateApi, keystoreFromOptions } from "./utils.js";
-import { submitTransaction } from "./substrate.js";
-import { optNetwork } from "./options.js";
+import { getSubstrateApi, keystoreFromOptions } from "../utils.js";
+import { submitTransaction } from "../substrate.js";
+import { optNetwork } from "../options.js";
 import { u8aFixLength } from "@polkadot/util";
 import { decodeAddress } from "@polkadot/util-crypto";
 
-const queryCmd = new Command("query")
+const balanceQueryCmd = new Command("query")
   .description("Query account balance")
   .argument("<address>", "Account address (SS58 or 0x hex)")
   .addOption(optNetwork)
@@ -28,7 +28,7 @@ const queryCmd = new Command("query")
     api.disconnect();
   });
 
-const transferCmd = new Command("transfer")
+const balanceTransferCmd = new Command("transfer")
   .description("Transfer balance to account")
   .argument("<address>", "Recipient account address (SS58 or 0x hex)")
   .argument("<amount>", "Amount in base units")
@@ -44,11 +44,10 @@ const transferCmd = new Command("transfer")
     console.log(`Transaction submitting...`);
     const txn = await submitTransaction(api, call, pair);
     console.log(`Transaction submitted: ${txn.txHash}`);
-    console.log(`Transaction confirming...`);
+    console.log("Waiting for confirmation...");
     const r = await txn.receipt;
-
     const header = await api.rpc.chain.getHeader(r.blockHash);
-    console.log(`Transaction confirmed: ${txn.txHash} block=${header.number}`);
+    console.log(`Confirmed in: block ${header.number}, hash ${header.hash}`);
     const result = r.events.map((e) => [e.event.method, JSON11.stringify(e.event.data.toJSON())]);
     console.log(columify(result, { showHeaders: false }));
 
@@ -57,5 +56,5 @@ const transferCmd = new Command("transfer")
 
 export const balanceCmd = new Command("balance")
   .description("manage balances")
-  .addCommand(queryCmd)
-  .addCommand(transferCmd);
+  .addCommand(balanceQueryCmd)
+  .addCommand(balanceTransferCmd);

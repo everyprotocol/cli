@@ -1,7 +1,18 @@
 import { Command, OptionValues } from "commander";
-import { parseAbiItem, isAddress, getAddress, type AbiFunction, type AbiParameter, Address, parseUnits } from "viem";
-import { stringify as j11 } from "json11";
-import { getClientsEth, getUniverseConfig } from "./utils.js";
+import {
+  parseAbiItem,
+  isAddress,
+  getAddress,
+  type AbiFunction,
+  type AbiParameter,
+  Address,
+  parseUnits,
+  parseEventLogs,
+} from "viem";
+import columnify from "columnify";
+import * as JSON11 from "json11";
+import { getClientsEth, getUniverseConfig } from "../utils.js";
+import { abi } from "../abi.js";
 
 const isArrayType = (t: string) => /\[[^\]]*\]$/.test(t);
 const isTupleType = (t: string) => t.startsWith("tuple");
@@ -86,6 +97,7 @@ export const objectSendCmd = new Command("send")
   .description("Call a function by signature (dry-run: prints calldata)")
   .option("--sig <sig>", "Function signature, e.g. 'transfer(address,uint256)'")
   .argument("<args...>", "Function arguments (arrays/tuples as JSON)")
+  .writeContractOptions()
   .action(async function (this: Command, args: string[]) {
     const { sig } = this.opts<{ sig?: string }>();
     if (!sig) {
@@ -115,7 +127,7 @@ async function sendTransaction(opts: OptionValues, sig: string, args0: string[])
   const account = walletClient.account;
   const setContract = (await publicClient.readContract({
     address: setRegistry,
-    abi: [abiFunc],
+    abi: abi.funcs.setRegistry,
     functionName: "setContract",
     args: [BigInt(setId)],
   })) as Address;
@@ -133,14 +145,17 @@ async function sendTransaction(opts: OptionValues, sig: string, args0: string[])
   const hash = await walletClient.writeContract(request);
   console.log(`Transaction sent: ${hash}`);
   console.log("Transaction mining...");
+  console.log("Waiting for confirmation...");
   const receipt = await publicClient.waitForTransactionReceipt({ hash });
-  console.log("Transaction mined");
+  console.log(`Confirmed in: block ${receipt.blockNumber}, hash ${receipt.blockHash}`);
 
-  if (receipt.logs?.length > 0) {
-    // const logs = parseEventLogs({ abi: abi.nonFuncs, logs: receipt.logs });
+  const output: [string, string][] = [];
+  if (receipt.logs && receipt.logs.length > 0) {
+    const parsedLogs = parseEventLogs({ abi: abi.nonFuncs.setContract, logs: receipt.logs });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    receipt.logs.forEach((log: any) => {
-      console.log(log.eventName, j11(log.data));
+    parsedLogs.forEach((log: any) => {
+      output.push([log.eventName, JSON11.stringify(log.args)]);
     });
   }
+  console.log(columnify(output, { showHeaders: false }));
 }

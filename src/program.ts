@@ -2,11 +2,11 @@ import { Command } from "commander";
 import { generateCommands } from "./cmdgen.js";
 import { RenamingCommand } from "./cmds.js";
 import { version } from "./utils.js";
-import { walletCmd } from "./wallet.js";
-import { matterCmd } from "./matter.js";
-import { balanceCmd } from "./balance.js";
-import { objectSendCmd } from "./object.js";
+import { walletCmd } from "./cmds/wallet.js";
+import { matterCmd } from "./cmds/matter.js";
+import { balanceCmd } from "./cmds/balance.js";
 import { configCmd } from "./cmds/config.js";
+import { objectSendCmd } from "./cmds/object.js";
 
 function buildProgram() {
   const subCmds = generateCommands();

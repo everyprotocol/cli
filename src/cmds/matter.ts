@@ -4,11 +4,11 @@ import * as fs from "fs";
 import * as path from "path";
 import * as JSON11 from "json11";
 import columify from "columnify";
-import { getSubstrateApi, keystoreFromOptions } from "./utils.js";
-import { submitTransaction } from "./substrate.js";
-import { optNetwork } from "./options.js";
+import { getSubstrateApi, keystoreFromOptions } from "../utils.js";
+import { submitTransaction } from "../substrate.js";
+import { optNetwork } from "../options.js";
 
-const registerCmd = new Command("register")
+const matterRegisterCmd = new Command("register")
   .description("Register matter on the Substrate chain")
   .argument("<files...>", "Paths of matter blob files")
   .option("--mime <string>", "Matter mime")
@@ -39,11 +39,13 @@ const registerCmd = new Command("register")
       console.log(`Transaction submitted: ${txn.txHash}`);
       txns.push({ txn, filePath });
     }
-    console.log(`Transaction mining...`);
+
+    console.log("Waiting for confirmation...");
     for (const { txn, filePath } of txns) {
       const r = await txn.receipt;
       const header = await api.rpc.chain.getHeader(r.blockHash);
-      console.log(`Transaction confirmed: ${txn.txHash} block=${header.number} ${filePath}`);
+      console.log(`Transaction confirmed: ${txn.txHash} ${filePath}`);
+      console.log(`Confirmed in: block ${header.number}, hash ${header.hash}`);
       const events = r.events.map((e) => [e.event.method, JSON11.stringify(e.event.data.toJSON())]);
       console.log(columify(events, { showHeaders: false }));
     }
@@ -51,7 +53,7 @@ const registerCmd = new Command("register")
     await api.disconnect();
   });
 
-export const matterCmd = new Command("matter").description("manage matters").addCommand(registerCmd);
+export const matterCmd = new Command("matter").description("manage matters").addCommand(matterRegisterCmd);
 
 function guessContentType(filePath: string): string {
   const ext = path.extname(filePath).toLowerCase();

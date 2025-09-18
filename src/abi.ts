@@ -26,6 +26,7 @@ export const abi = {
     omniRegistry: loadNonFuncAbiItems("OmniRegistry"),
     kindRegistry: loadNonFuncAbiItems("KindRegistry"),
     setRegistry: loadNonFuncAbiItems("SetRegistry"),
+    setContract: loadNonFuncAbiItems("ISet"),
   },
 
   funcs: {

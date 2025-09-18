@@ -1,10 +1,10 @@
 import { Address, createPublicClient, http } from "viem";
-import { CommandContext, configureCommand, CommandConfig } from "./cmds.js";
+import { Command } from "commander";
 import JSON5 from "json5";
+import { CommandContext, configureCommand, CommandConfig } from "./cmds.js";
 import { rstrip, excludes, includes, lstrip, startsWith, checkArguments } from "./utils.js";
 import { replaceAbiParamAt, insertAbiParamAt, abi, AbiFunctionDoc } from "./abi.js";
-import { Command } from "commander";
-import { genMintCommand } from "./mint.js";
+import { genMintCommand } from "./cmds/mint.js";
 import { genRelateCommand, genUnrelateCommand } from "./relate.js";
 
 interface SubCommands {

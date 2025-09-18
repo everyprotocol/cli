@@ -169,7 +169,7 @@ export function getPassword(opts: OptionValues): string {
     ? opts.password
     : opts.passwordFile
       ? fs.readFileSync(opts.passwordFile, "utf8").trim()
-      : promptSync({ sigint: true })("Password: ", { echo: "" });
+      : promptSync({ sigint: true })("Enter keystore password: ", { echo: "" });
 }
 
 export function getPasswordConfirm(opts: OptionValues): string {
@@ -180,8 +180,8 @@ export function getPasswordConfirm(opts: OptionValues): string {
     return fs.readFileSync(opts.passwordFile, "utf8").trim();
   }
   const prompt = promptSync({ sigint: true });
-  const password = prompt("Password: ", { echo: "" });
-  const confirmation = prompt("Confirm: ", { echo: "" });
+  const password = prompt("Enter keystore password: ", { echo: "" });
+  const confirmation = prompt("Re-enter to confirm: ", { echo: "" });
   if (password !== confirmation) {
     throw new Error(`Error: Passwords do not match`);
   }

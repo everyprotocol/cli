@@ -3,9 +3,9 @@ import { Keyring } from "@polkadot/keyring";
 import { mnemonicGenerate, cryptoWaitReady } from "@polkadot/util-crypto";
 import { bytesToHex } from "viem";
 import * as fs from "fs";
-import { getPasswordConfirm, keystoreFromAccount, resolveKeystoreDir, saveKeystore } from "./utils.js";
+import { getPasswordConfirm, keystoreFromAccount, resolveKeystoreDir, saveKeystore } from "../utils.js";
 
-const listCmd = new Command()
+const walletListCmd = new Command()
   .name("list")
   .description("List all wallets")
   .option("-f, --foundry", "use foundry keystore directory (~/.foundry/keystores)")
@@ -16,7 +16,7 @@ const listCmd = new Command()
     files.forEach((file) => console.log(file));
   });
 
-const generateCmd = new Command()
+const walletNewCmd = new Command()
   .name("new")
   .description("Generate a new wallet")
   .option("-t, --type <type>", "key type (sr25519, ed25519, ethereum)", "sr25519")
@@ -34,7 +34,7 @@ const generateCmd = new Command()
     saveKeystore(json, name, options);
   });
 
-const importCmd = new Command()
+const walletImportCmd = new Command()
   .name("import")
   .description("Import a wallet from a secrete URI")
   .option("-t, --type <type>", "key type (sr25519, ed25519, ethereum)", "sr25519")
@@ -53,7 +53,7 @@ const importCmd = new Command()
     saveKeystore(json, name, options);
   });
 
-const inspectCmd = new Command()
+const walletInspectCmd = new Command()
   .name("inspect")
   .description("Inspect a wallet")
   .option("-t, --type <type>", "key type (sr25519, ed25519, ethereum)", "sr25519")
@@ -89,7 +89,7 @@ const inspectCmd = new Command()
 export const walletCmd = new Command()
   .name("wallet")
   .description("manage wallets")
-  .addCommand(listCmd)
-  .addCommand(generateCmd)
-  .addCommand(importCmd)
-  .addCommand(inspectCmd);
+  .addCommand(walletListCmd)
+  .addCommand(walletNewCmd)
+  .addCommand(walletImportCmd)
+  .addCommand(walletInspectCmd);
