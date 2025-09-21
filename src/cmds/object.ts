@@ -8,6 +8,8 @@ import {
   Address,
   parseUnits,
   parseEventLogs,
+  erc1155Abi,
+  erc721Abi,
 } from "viem";
 import columnify from "columnify";
 import * as JSON11 from "json11";
@@ -144,18 +146,34 @@ async function sendTransaction(opts: OptionValues, sig: string, args0: string[])
   });
   const hash = await walletClient.writeContract(request);
   console.log(`Transaction sent: ${hash}`);
-  console.log("Transaction mining...");
   console.log("Waiting for confirmation...");
   const receipt = await publicClient.waitForTransactionReceipt({ hash });
   console.log(`Confirmed in: block ${receipt.blockNumber}, hash ${receipt.blockHash}`);
 
-  const output: [string, string][] = [];
+  const output: [number, string, string][] = [];
   if (receipt.logs && receipt.logs.length > 0) {
-    const parsedLogs = parseEventLogs({ abi: abi.nonFuncs.setContract, logs: receipt.logs });
+    const parsedLogs = parseEventLogs({
+      abi: [...abi.nonFuncs.setContract, ...erc1155Abi, ...erc721Abi],
+      logs: receipt.logs,
+    });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    parsedLogs.forEach((log: any) => {
-      output.push([log.eventName, JSON11.stringify(log.args)]);
+    parsedLogs.forEach((log: any, i: number) => {
+      output.push([i, log.eventName, JSON11.stringify(log.args)]);
     });
   }
-  console.log(columnify(output, { showHeaders: false }));
+  if (output.length > 0) {
+    const termWidth = process.stdout.columns || 80;
+    console.log("Events emitted");
+    console.log(
+      columnify(output, {
+        showHeaders: false,
+        truncateMarker: "",
+        config: {
+          2: {
+            maxWidth: Math.max(60, termWidth - 20),
+          },
+        },
+      })
+    );
+  }
 }
