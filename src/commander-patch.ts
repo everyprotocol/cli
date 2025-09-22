@@ -1,4 +1,6 @@
 import { Argument, Command, Option } from "commander";
+import { SubReadAction, SubWriteAction } from "./types/commander.js";
+import { FromOpts } from "./from-opts.js";
 
 export const account = new Option("-a, --account <account>", "Name of the keystore");
 export const password = new Option("-p, --password [password]", "Password to decrypt the keystore");
@@ -42,4 +44,31 @@ export const writeOptions = [universe, account, password, passwordFile, foundry]
 
 (Command.prototype as unknown as Command).addWriteOptions = function () {
   return this.addKeystoreOptions().addOption(universe);
+};
+
+(Command.prototype as unknown as Command).subReadAction = function (fn: SubReadAction) {
+  // eslint-disable-next-line
+  return this.action(async function (this: Command, ...args: any[]) {
+    const api = await FromOpts.getSubstrateApi(this.opts());
+    try {
+      return await fn.call(this, api, ...args);
+    } finally {
+      await api.disconnect().catch(() => {});
+    }
+  });
+};
+
+(Command.prototype as unknown as Command).subWriteAction = function (fn: SubWriteAction) {
+  // eslint-disable-next-line
+  return this.action(async function (this: Command, ...args: any[]) {
+    const opts = this.opts();
+    const api = await FromOpts.getSubstrateApi(opts);
+    try {
+      const keystore = await FromOpts.getKeystore(opts);
+      const pair = await keystore.pair();
+      return await fn.call(this, api, pair, ...args);
+    } finally {
+      await api.disconnect().catch(() => {});
+    }
+  });
 };

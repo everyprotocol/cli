@@ -1,3 +1,5 @@
+import { u8aFixLength } from "@polkadot/util";
+import { decodeAddress } from "@polkadot/util-crypto";
 import { InvalidArgumentError } from "commander";
 
 export function parseBigInt(arg: string): bigint {
@@ -5,6 +7,14 @@ export function parseBigInt(arg: string): bigint {
     return BigInt(arg);
   } catch (e /* eslint-disable-line */) {
     throw new InvalidArgumentError("invalid bigint");
+  }
+}
+
+export function parseAccountId(address: string) {
+  try {
+    return u8aFixLength(decodeAddress(address), 256);
+  } catch (e /* eslint-disable-line */) {
+    throw new InvalidArgumentError("invalid account ID");
   }
 }
 

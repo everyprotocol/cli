@@ -7,7 +7,6 @@ import { guessContentType } from "../utils.js";
 import { submitTransaction } from "../substrate.js";
 import { network } from "../commander-patch.js";
 import { Logger } from "../logger.js";
-import { FromOpts } from "../from-opts.js";
 
 const matterRegisterCmd = new Command("register")
   .description("Register matter on the Substrate chain")
@@ -17,9 +16,8 @@ const matterRegisterCmd = new Command("register")
   .addKeystoreOptions()
   .addOption(network)
   .addOutputOptions()
-  .action(async (files, options) => {
+  .subWriteAction(async (api, pair, files, options) => {
     const console = new Logger(options);
-
     const materials = [];
     for (const file of files) {
       const [filePath, form_, mime_] = file.split(":");
@@ -28,11 +26,7 @@ const matterRegisterCmd = new Command("register")
       materials.push({ filePath, form, mime });
     }
 
-    const keystore = await FromOpts.getKeystore(options);
-    const pair = await keystore.pair();
-    const api = await FromOpts.getSubstrateApi(options);
     const txns = [];
-
     for (const { filePath, form, mime } of materials) {
       const content = fs.readFileSync(filePath);
       console.log(`Register matter: form=${form} mime=${mime} blob=${content.length}B ${filePath}`);
@@ -62,8 +56,6 @@ const matterRegisterCmd = new Command("register")
       });
     }
     console.result(result);
-
-    await api.disconnect();
   });
 
 export const matterCmd = new Command("matter").description("manage matters").addCommand(matterRegisterCmd);

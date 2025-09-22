@@ -5,6 +5,9 @@ import { isHex, hexToU8a } from "@polkadot/util";
 import { base64Decode } from "@polkadot/util-crypto/base64";
 import { decodePair } from "@polkadot/keyring/pair/decode";
 import { AbiParameter, getAddress, isAddress } from "viem";
+import { ApiPromise } from "@polkadot/api";
+import { Command } from "commander";
+import { FromOpts } from "./from-opts.js";
 
 export const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -150,3 +153,37 @@ export function coerceValue(val: string, param: AbiParameter): unknown {
   // scalar
   return coerceScalar(val, type);
 }
+
+export async function substrateAction<T>(
+  cmd: Command,
+  api: ApiPromise,
+  fn: (api: ApiPromise) => Promise<T>
+): Promise<T | undefined> {
+  try {
+    return await fn(api);
+  } catch (e: any /* eslint-disable-line */) {
+    cmd.error(e.message);
+  } finally {
+    api.disconnect().catch(() => {});
+  }
+}
+
+// eslint-disable-next-line
+type SubAction = (this: Command, api: ApiPromise, ...args: any[]) => void | Promise<void>;
+
+export function wrapSubAction(fn: SubAction) {
+  // eslint-disable-next-line
+  return async function (this: Command, ...args: any[]) {
+    const api = await FromOpts.getSubstrateApi(this.opts());
+    try {
+      // keep Commander’s `this` binding and pass api first
+      return await fn.call(this, api, ...args);
+    } finally {
+      await api.disconnect().catch(() => {});
+    }
+  };
+}
+// this.action(async function(){
+// this
+//
+// })

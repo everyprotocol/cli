@@ -11,11 +11,13 @@ import { relationCmd } from "./cmds/relation.js";
 import { setCmd } from "./cmds/set.js";
 import { objectCmd } from "./cmds/object.js";
 import { minterCmd } from "./cmds/minter.js";
+import { universeCmd } from "./cmds/universe.js";
 
 export const program = new Command("every")
   .description("CLI for interacting with Every Protocol")
   .version(version())
   .showHelpAfterError(true)
+  .addCommand(universeCmd)
   .addCommand(matterCmd)
   .addCommand(setCmd)
   .addCommand(kindCmd)

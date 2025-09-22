@@ -6,8 +6,11 @@ import { KeyringPair } from "@polkadot/keyring/types";
 import { ApiPromise } from "@polkadot/api";
 import { SubmittableExtrinsic } from "@polkadot/api/types";
 import { ISubmittableResult } from "@polkadot/types/types";
+import * as JSON11 from "json11";
+import columify from "columnify";
 import { createDeferred } from "./utils.js";
 import "./commander-patch.js";
+import { Logger } from "./logger.js";
 
 interface Receipt {
   txHash: string;
@@ -62,4 +65,32 @@ export async function submitTransaction(
   });
 
   return await pTxn.promise;
+}
+
+export async function submitSubTxUI(
+  api: ApiPromise,
+  tx: SubmittableExtrinsic<"promise">,
+  pair: KeyringPair,
+  console: Logger
+) {
+  console.log(`Transaction submitting...`);
+  const txn = await submitTransaction(api, tx, pair);
+  console.log(`Transaction submitted: ${txn.txHash}`);
+  console.log("Waiting for confirmation...");
+  const r = await txn.receipt;
+  const header = await api.rpc.chain.getHeader(r.blockHash);
+  console.log(`Confirmed in: block ${header.number}, hash ${header.hash}`);
+  const events = r.events.map((e, i) => [i, e.event.method, JSON11.stringify(e.event.data.toJSON())]);
+  const result = r.events.map((e) => {
+    const event = {
+      event: e.event.method,
+      data: e.event.data.toJSON(),
+    };
+    return event;
+  });
+  if (events.length > 0) {
+    console.log(`Events`);
+    console.log(columify(events, { showHeaders: false }));
+  }
+  console.result(result);
 }
