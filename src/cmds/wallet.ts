@@ -3,7 +3,8 @@ import { Keyring } from "@polkadot/keyring";
 import { mnemonicGenerate, cryptoWaitReady } from "@polkadot/util-crypto";
 import { bytesToHex } from "viem";
 import * as fs from "fs";
-import { getPasswordConfirm, keystoreFromAccount, resolveKeystoreDir, saveKeystore } from "../utils.js";
+import { FromOpts } from "../from-opts.js";
+import { saveJson } from "../utils.js";
 
 const walletListCmd = new Command()
   .name("list")
@@ -11,7 +12,7 @@ const walletListCmd = new Command()
   .option("-f, --foundry", "use foundry keystore directory (~/.foundry/keystores)")
   .option("--dir <dir>", "specify a custom keystore directory")
   .action(async (options) => {
-    const dir = resolveKeystoreDir(options);
+    const dir = FromOpts.getKeystoreDir(options);
     const files = fs.readdirSync(dir);
     files.forEach((file) => console.log(file));
   });
@@ -25,13 +26,14 @@ const walletNewCmd = new Command()
   .option("--dir <dir>", "specify keystore directory")
   .argument("<name>", "name of the wallet")
   .action(async (name, options) => {
-    const password = getPasswordConfirm(options);
+    const password = FromOpts.confirmPassword(options);
     await cryptoWaitReady();
     const keyring = new Keyring();
     const mnemonic = mnemonicGenerate();
     const pair = keyring.addFromUri(mnemonic, { name }, options.type);
     const json = pair.toJson(password);
-    saveKeystore(json, name, options);
+    const dir = FromOpts.getKeystoreDir(options);
+    saveJson(json, dir, name);
   });
 
 const walletImportCmd = new Command()
@@ -45,12 +47,13 @@ const walletImportCmd = new Command()
   .argument("<name>", "name of the wallet")
   .argument("<suri>", "secret URI")
   .action(async (name, suri, options) => {
-    const password = getPasswordConfirm(options);
+    const password = FromOpts.confirmPassword(options);
     await cryptoWaitReady();
     const keyring = new Keyring({ type: options.type });
     const pair = keyring.addFromUri(suri);
     const json = pair.toJson(password);
-    saveKeystore(json, name, options);
+    const dir = FromOpts.getKeystoreDir(options);
+    saveJson(json, dir, name);
   });
 
 const walletInspectCmd = new Command()
@@ -64,12 +67,8 @@ const walletInspectCmd = new Command()
   .option("-f, --foundry", "use foundry keystore directory (~/.foundry/keystores)")
   .argument("<name>", "name of the wallet")
   .action(async (name, options) => {
-    const keystore = await keystoreFromAccount(name, options);
-    let decoded;
-    if (options.decrypt) {
-      decoded = await keystore.privateKey();
-    }
-
+    const keystore = await FromOpts.getKeystore(options, name);
+    const decoded = options.decrypt ? await keystore.privateKey() : undefined;
     let dir = "~/.every/keystores";
     if (options.foundry) {
       dir = "~/.foundry/keystores";

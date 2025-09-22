@@ -1,53 +1,29 @@
 import { Command } from "commander";
-import { generateCommands } from "./cmdgen.js";
-import { RenamingCommand } from "./cmds.js";
 import { version } from "./utils.js";
 import { walletCmd } from "./cmds/wallet.js";
 import { matterCmd } from "./cmds/matter.js";
 import { balanceCmd } from "./cmds/balance.js";
 import { configCmd } from "./cmds/config.js";
-import { objectSendCmd } from "./cmds/object.js";
+import { kindCmd } from "./cmds/kind.js";
+import { valueCmd } from "./cmds/value.js";
+import { uniqueCmd } from "./cmds/unique.js";
+import { relationCmd } from "./cmds/relation.js";
+import { setCmd } from "./cmds/set.js";
+import { objectCmd } from "./cmds/object.js";
+import { minterCmd } from "./cmds/minter.js";
 
-function buildProgram() {
-  const subCmds = generateCommands();
-  const kindCmd = new RenamingCommand().name("kind").description("manage kinds").addCommands(subCmds.kind);
-  const setCmd = new RenamingCommand().name("set").description("manage sets").addCommands(subCmds.set);
-  const relationCmd = new RenamingCommand()
-    .name("relation")
-    .description("manage relations")
-    .addCommands(subCmds.relation);
-  const uniqueCmd = new RenamingCommand().name("unique").description("manage uniques").addCommands(subCmds.unique);
-  const valueCmd = new RenamingCommand().name("value").description("manage values").addCommands(subCmds.value);
-  const objectCmd = new RenamingCommand()
-    .name("object")
-    .description("create and interact with objects")
-    .addCommands(subCmds.object)
-    .addCommand(objectSendCmd);
-
-  const mintPolicyCmd = new RenamingCommand()
-    .name("minter")
-    .description("manage mint policies")
-    .addCommands(subCmds.mintpolicy);
-
-  const program = new Command()
-    .name("every")
-    .description("CLI for interacting with Every Protocol")
-    .version(version())
-    .showHelpAfterError(true);
-
-  program.addCommand(matterCmd);
-  program.addCommand(setCmd);
-  program.addCommand(kindCmd);
-  program.addCommand(relationCmd);
-  program.addCommand(valueCmd);
-  program.addCommand(uniqueCmd);
-  program.addCommand(objectCmd);
-  program.addCommand(mintPolicyCmd);
-  program.addCommand(balanceCmd);
-  program.addCommand(walletCmd);
-  program.addCommand(configCmd);
-
-  return program;
-}
-
-export const program = buildProgram();
+export const program = new Command("every")
+  .description("CLI for interacting with Every Protocol")
+  .version(version())
+  .showHelpAfterError(true)
+  .addCommand(matterCmd)
+  .addCommand(setCmd)
+  .addCommand(kindCmd)
+  .addCommand(relationCmd)
+  .addCommand(valueCmd)
+  .addCommand(uniqueCmd)
+  .addCommand(objectCmd)
+  .addCommand(minterCmd)
+  .addCommand(balanceCmd)
+  .addCommand(walletCmd)
+  .addCommand(configCmd);

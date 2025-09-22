@@ -150,7 +150,7 @@ export function loadFuncAbiItems(name: string) {
         return {
           ...item,
           _metadata,
-        };
+        } as AbiFunctionDoc;
       })
   );
 }

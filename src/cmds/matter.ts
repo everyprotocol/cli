@@ -1,21 +1,25 @@
 import { Command } from "commander";
 import "@polkadot/api-augment/substrate";
 import * as fs from "fs";
-import * as path from "path";
 import * as JSON11 from "json11";
 import columify from "columnify";
-import { getSubstrateApi, keystoreFromOptions } from "../utils.js";
+import { guessContentType } from "../utils.js";
 import { submitTransaction } from "../substrate.js";
-import { optNetwork } from "../options.js";
+import { network } from "../commander-patch.js";
+import { Logger } from "../logger.js";
+import { FromOpts } from "../from-opts.js";
 
 const matterRegisterCmd = new Command("register")
   .description("Register matter on the Substrate chain")
   .argument("<files...>", "Paths of matter blob files")
   .option("--mime <string>", "Matter mime")
   .option("--form <number>", "Matter form", "1")
-  .accountOptions()
-  .addOption(optNetwork)
+  .addKeystoreOptions()
+  .addOption(network)
+  .addOutputOptions()
   .action(async (files, options) => {
+    const console = new Logger(options);
+
     const materials = [];
     for (const file of files) {
       const [filePath, form_, mime_] = file.split(":");
@@ -24,9 +28,9 @@ const matterRegisterCmd = new Command("register")
       materials.push({ filePath, form, mime });
     }
 
-    const keystore = await keystoreFromOptions(options);
+    const keystore = await FromOpts.getKeystore(options);
     const pair = await keystore.pair();
-    const api = await getSubstrateApi(options);
+    const api = await FromOpts.getSubstrateApi(options);
     const txns = [];
 
     for (const { filePath, form, mime } of materials) {
@@ -41,35 +45,25 @@ const matterRegisterCmd = new Command("register")
     }
 
     console.log("Waiting for confirmation...");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result: any[] = [];
     for (const { txn, filePath } of txns) {
       const r = await txn.receipt;
       const header = await api.rpc.chain.getHeader(r.blockHash);
       console.log(`Transaction confirmed: ${txn.txHash} ${filePath}`);
       console.log(`Confirmed in: block ${header.number}, hash ${header.hash}`);
       const events = r.events.map((e) => [e.event.method, JSON11.stringify(e.event.data.toJSON())]);
+      const receipt = r.events.map((e) => ({ event: e.event.method, data: e.event.data.toJSON() }));
       console.log(columify(events, { showHeaders: false }));
+      result.push({
+        file: filePath,
+        transaction: txn.txHash,
+        events: receipt,
+      });
     }
+    console.result(result);
 
     await api.disconnect();
   });
 
 export const matterCmd = new Command("matter").description("manage matters").addCommand(matterRegisterCmd);
-
-function guessContentType(filePath: string): string {
-  const ext = path.extname(filePath).toLowerCase();
-  switch (ext) {
-    case ".txt":
-      return "text/plain";
-    case ".json":
-      return "application/json";
-    case ".wasm":
-      return "application/wasm";
-    case ".jpg":
-    case ".jpeg":
-      return "image/jpeg";
-    case ".png":
-      return "image/png";
-    default:
-      return "application/octet-stream";
-  }
-}

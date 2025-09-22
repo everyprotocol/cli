@@ -2,15 +2,12 @@ import "commander";
 
 declare module "commander" {
   interface Command {
-    /** RPC/url + network context */
-    // networkOptions(): this;
-    /** keys, accounts, derivation, etc. */
-    accountOptions(): this;
-    writeContractOptions(): this;
-    /** logging/verbosity/etc. */
-    // commonOptions(): this;
+    addKeystoreOptions(): this;
+    addWriteOptions(): this;
+    addOutputOptions(): this;
 
-    /** generic: apply any set of Option[] with chaining */
-    useOptions(options: import("commander").Option[]): this;
+    addOptions(options: import("commander").Option[]): this;
+    addCommands(commands: import("commander").Command[]): this;
+    addArguments(arguments: import("commander").Argument[]): this;
   }
 }

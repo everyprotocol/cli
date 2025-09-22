@@ -1,30 +1,10 @@
-import {
-  bytesToHex,
-  createPublicClient,
-  createWalletClient,
-  encodeAbiParameters,
-  http,
-  PublicClient,
-  WalletClient,
-} from "viem";
-import { formatAbiParameter } from "abitype";
 import fs from "fs";
 import path from "path";
-import { OptionValues } from "commander";
-import { Wallet } from "ethers";
-import { privateKeyToAccount } from "viem/accounts";
-import promptSync from "prompt-sync";
-import os from "os";
-import JSON5 from "json5";
 import { fileURLToPath } from "url";
 import { isHex, hexToU8a } from "@polkadot/util";
 import { base64Decode } from "@polkadot/util-crypto/base64";
 import { decodePair } from "@polkadot/keyring/pair/decode";
-import { AbiFunctionDoc } from "./abi.js";
-import { loadMergedConfig, Observer, Universe } from "./config.js";
-import Keyring from "@polkadot/keyring";
-import { UnifiedKeystore } from "./keystore.js";
-import { ApiPromise, WsProvider } from "@polkadot/api";
+import { AbiParameter, getAddress, isAddress } from "viem";
 
 export const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -33,118 +13,16 @@ export function version() {
   return JSON.parse(fs.readFileSync(pkgPath, "utf-8")).version;
 }
 
-export function lstrip(prefix: string) {
-  return function (func: AbiFunctionDoc): string {
-    return func.name.startsWith(prefix) ? func.name.substring(prefix.length).toLowerCase() : func.name;
-  };
-}
-
-export function rstrip(postfix: string) {
-  return function (func: AbiFunctionDoc): string {
-    return func.name.endsWith(postfix) ? func.name.slice(0, -postfix.length) : func.name;
-  };
-}
-
-export function startsWith(prefix: string) {
-  return function (func: AbiFunctionDoc): boolean {
-    return func.name.startsWith(prefix);
-  };
-}
-
-export function excludes(names: string[]) {
-  return function (func: AbiFunctionDoc): boolean {
-    return !names.includes(func.name);
-  };
-}
-
-export function includes(names: string[]) {
-  return function (f: AbiFunctionDoc): boolean {
-    return names.includes(f.name);
-  };
-}
-
-export function stringify(o: unknown) {
-  const replacer = (_key: string, value: unknown) => (typeof value === "bigint" ? value.toString() : value);
-  return JSON5.stringify(o, replacer);
-}
-
-export async function getClientsEth(
-  uniConf: Universe,
-  opts: OptionValues
-): Promise<{ publicClient: PublicClient; walletClient: WalletClient }> {
-  const transport = http(uniConf.rpc);
-  const publicClient: PublicClient = createPublicClient({ transport });
-  const privateKey = await readPrivateKeyEth(opts);
-  const account = privateKeyToAccount(privateKey);
-  const walletClient: WalletClient = createWalletClient({ account, transport });
-  return { publicClient, walletClient };
-}
-
-export async function readPrivateKeyEth(opts: OptionValues) {
-  if (opts.privateKey) {
-    return opts.privateKey.startsWith("0x") ? opts.privateKey : `0x${opts.privateKey}`;
-  } else if (opts.account) {
-    const keystorePath = resolveKeystoreFile(opts.account, opts);
-    const keystore = loadKeystore(keystorePath);
-
-    if (keystore.crypto || keystore.Crypto) {
-      // for Ethereum keystores
-      const password = getPassword(opts);
-      const wallet = await Wallet.fromEncryptedJson(JSON.stringify(keystore), password);
-      return wallet.privateKey;
-    } else if (keystore.encoding || keystore.meta) {
-      // for Substrate keystores
-      if (keystore.meta?.isEthereum || keystore.meta?.type === "ethereum") {
-        const password = getPassword(opts);
-        const pair = decodeSubstratePair(keystore, password);
-        return bytesToHex(pair.secretKey);
-      } else {
-        throw new Error("Not an Ethereum account");
-      }
-    } else {
-      // Not supported for now
-      throw new Error("Unknown keystore format");
-    }
-  } else {
-    throw new Error(`Neither account nor private key specified`);
-  }
-}
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function checkArguments(raw: unknown[], func: AbiFunctionDoc): any[] {
-  return raw.map((rawArg, index) => {
-    const abiParam = func.inputs[index];
-    const pt = abiParam?.type;
-    const arg = pt === "address" || pt.startsWith("bytes") || pt === "string" ? rawArg : JSON5.parse(rawArg as string);
-    try {
-      encodeAbiParameters([abiParam], [arg]);
-    } catch (e: unknown) {
-      if (e instanceof Error) {
-        throw new Error(`invalid param ${formatAbiParameter(abiParam)}\n${e.message}`);
-      }
-    }
-    return arg;
-  });
-}
-
-export function resolveKeystoreDir(options: OptionValues): string {
-  if (options.foundry) {
-    return path.join(os.homedir(), ".foundry", "keystores");
+export function loadJson(file: string): any {
+  if (!fs.existsSync(file)) {
+    throw new Error(`Keystore file not found: ${file}`);
   }
-  if (options.dir) {
-    return options.dir;
-  }
-  return path.join(os.homedir(), ".every", "keystores");
+  return JSON.parse(fs.readFileSync(file, "utf8"));
 }
 
-export function resolveKeystoreFile(name: string, options: OptionValues): string {
-  const dir = resolveKeystoreDir(options);
-  return path.join(dir, name);
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function saveKeystore(json: any, name: string, options: OptionValues) {
-  const dir = resolveKeystoreDir(options);
+// eslint-disable-next-line
+export function saveJson(json: any, dir: string, name: string) {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -153,43 +31,10 @@ export function saveKeystore(json: any, name: string, options: OptionValues) {
     throw new Error(`File exists: ${file}`);
   }
   fs.writeFileSync(file, JSON.stringify(json));
-  console.log(`File saved: ${file}`);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function loadKeystore(file: string): any {
-  if (!fs.existsSync(file)) {
-    throw new Error(`Keystore file not found: ${file}`);
-  }
-  return JSON.parse(fs.readFileSync(file, "utf8"));
-}
-
-export function getPassword(opts: OptionValues): string {
-  return opts.password
-    ? opts.password
-    : opts.passwordFile
-      ? fs.readFileSync(opts.passwordFile, "utf8").trim()
-      : promptSync({ sigint: true })("Enter keystore password: ", { echo: "" });
-}
-
-export function getPasswordConfirm(opts: OptionValues): string {
-  if (opts.password) {
-    return opts.password;
-  }
-  if (opts.passwordFile) {
-    return fs.readFileSync(opts.passwordFile, "utf8").trim();
-  }
-  const prompt = promptSync({ sigint: true });
-  const password = prompt("Enter keystore password: ", { echo: "" });
-  const confirmation = prompt("Re-enter to confirm: ", { echo: "" });
-  if (password !== confirmation) {
-    throw new Error(`Error: Passwords do not match`);
-  }
-  return password;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function decodeSubstratePair(keystore: any, password?: string) {
+export function decodePairFromJson(keystore: any, password?: string) {
   const encodedRaw = keystore.encoded;
   let encodingType = keystore.encoding.type;
   encodingType = !Array.isArray(encodingType) ? [encodingType] : encodingType;
@@ -198,81 +43,110 @@ export function decodeSubstratePair(keystore: any, password?: string) {
   return decoded;
 }
 
-export function getSubstrateAccountPair(flags: OptionValues) {
-  const keyFile = resolveKeystoreFile(flags.account, flags);
-  const keyData = loadKeystore(keyFile);
-  const keyring = new Keyring();
-  const pair = keyring.createFromJson(keyData);
-  if (pair.isLocked) {
-    const password = getPassword(flags);
-    pair.unlock(password);
+export function guessContentType(filePath: string): string {
+  const ext = path.extname(filePath).toLowerCase();
+  switch (ext) {
+    case ".txt":
+      return "text/plain";
+    case ".json":
+      return "application/json";
+    case ".wasm":
+      return "application/wasm";
+    case ".jpg":
+    case ".jpeg":
+      return "image/jpeg";
+    case ".png":
+      return "image/png";
+    default:
+      return "application/octet-stream";
   }
-  return pair;
 }
 
-export async function keystoreFromOptions(options: OptionValues): Promise<UnifiedKeystore> {
-  if (!options.account) {
-    throw new Error("Account must be specified with --account");
+export function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: object) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+const isArrayType = (t: string) => /\[[^\]]*\]$/.test(t);
+const isTupleType = (t: string) => t.startsWith("tuple");
+const elemType = (t: string) => t.replace(/\[[^\]]*\]$/, "");
+// const fmtInputs = (ins: ReadonlyArray<Pick<AbiParameter, "name" | "type">>) =>
+//   ins.map((i) => (i.name ? `${i.type} ${i.name}` : i.type)).join(", ");
+
+function hasComponents(p: AbiParameter): p is AbiParameter & { components: ReadonlyArray<AbiParameter> } {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (p as any).components !== "undefined";
+}
+
+function coerceScalar(val: string, type: string): string | boolean | bigint {
+  const base = elemType(type);
+  if (base === "address") {
+    if (!isAddress(val)) throw new Error(`Invalid address: ${val}`);
+    return getAddress(val);
   }
-  return keystoreFromAccount(options.account, options);
+  if (base === "bool") {
+    if (!/^(true|false)$/i.test(val)) throw new Error(`Invalid bool: ${val}`);
+    return /^true$/i.test(val);
+  }
+  if (base === "string") return val;
+  if (base.startsWith("bytes")) {
+    if (!/^0x[0-9a-fA-F]*$/.test(val)) throw new Error(`Invalid ${base} (expect 0x...)`);
+    return val;
+  }
+  if (base.startsWith("uint") || base.startsWith("int")) {
+    try {
+      return val.startsWith("0x") ? BigInt(val) : BigInt(val);
+    } catch {
+      throw new Error(`Invalid ${base}: ${val}`);
+    }
+  }
+  return val;
 }
 
-export async function keystoreFromAccount(account: string, options: OptionValues): Promise<UnifiedKeystore> {
-  const file = resolveKeystoreFile(account, options);
-  const keyData = loadKeystore(file);
-  const password = getPassword(options);
-  const keystore = await UnifiedKeystore.fromJSON(keyData, password);
-  return keystore;
-}
+export function coerceValue(val: string, param: AbiParameter): unknown {
+  const { type } = param;
 
-export function getObserverConfig(options: OptionValues): Observer {
-  const conf = loadMergedConfig();
+  // arrays: expect JSON array; recurse on element type (preserve components if tuple[])
+  if (isArrayType(type)) {
+    const arr = JSON.parse(val);
+    if (!Array.isArray(arr)) throw new Error(`Expected array for ${type}`);
 
-  let observerName: string | undefined;
-  const DEFAULT_OBSERVER = "localnet";
+    // build element param (carry tuple components if present)
+    const inner: AbiParameter = hasComponents(param)
+      ? ({ ...param, type: elemType(type), components: param.components } as AbiParameter)
+      : ({ ...param, type: elemType(type) } as AbiParameter);
 
-  if (options.network) {
-    observerName = options.network;
-  } else if (options.universe) {
-    const universe = conf.universes[options.universe];
-    if (!universe) {
-      throw new Error(
-        `Universe '${options.universe}' not found in config. Available: ${Object.keys(conf.universes).join(", ")}`
+    return arr.map((v) => coerceValue(typeof v === "string" ? v : JSON.stringify(v), inner));
+  }
+
+  // tuples: need components
+  if (isTupleType(type)) {
+    if (!hasComponents(param) || param.components.length === 0) {
+      throw new Error(`Tuple components missing for ${type}`);
+    }
+    const tup = JSON.parse(val);
+
+    if (Array.isArray(tup)) {
+      if (tup.length !== param.components.length) {
+        throw new Error(`Tuple length mismatch: expected ${param.components.length}, got ${tup.length}`);
+      }
+      return param.components.map((c, i) =>
+        coerceValue(typeof tup[i] === "string" ? tup[i] : JSON.stringify(tup[i]), c)
       );
     }
-    observerName = universe.observer;
-  } else {
-    observerName = DEFAULT_OBSERVER;
+    // object by names
+    return param.components.map((c) => {
+      const v = tup[c.name as keyof typeof tup];
+      if (v === undefined) throw new Error(`Tuple field missing: ${c.name}`);
+      return coerceValue(typeof v === "string" ? v : JSON.stringify(v), c);
+    });
   }
 
-  if (!observerName) {
-    throw new Error(`No observer resolved from options or config.`);
-  }
-
-  const observer = conf.observers[observerName];
-  if (!observer) {
-    throw new Error(
-      `Observer '${observerName}' not found in config. Available: ${Object.keys(conf.observers).join(", ")}`
-    );
-  }
-
-  return observer;
-}
-
-export function getUniverseConfig(opts: OptionValues): Universe {
-  const config = loadMergedConfig();
-  const universeName = opts.universe;
-  const universe = config.universes[universeName];
-  if (!universe) {
-    const available = Object.keys(config.universes).join(", ");
-    throw new Error(`Universe "${universeName}" not found. Available: ${available}`);
-  }
-  return universe;
-}
-
-export async function getSubstrateApi(options: OptionValues): Promise<ApiPromise> {
-  const conf: Observer = getObserverConfig(options);
-  const provider = new WsProvider(conf.rpc);
-  const api = await ApiPromise.create({ provider, noInitWarn: true });
-  return api;
+  // scalar
+  return coerceScalar(val, type);
 }

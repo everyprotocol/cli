@@ -1,183 +1,76 @@
-import { Address, createPublicClient, http } from "viem";
-import { Command } from "commander";
-import JSON5 from "json5";
-import { CommandContext, configureCommand, CommandConfig } from "./cmds.js";
-import { rstrip, excludes, includes, lstrip, startsWith, checkArguments } from "./utils.js";
-import { replaceAbiParamAt, insertAbiParamAt, abi, AbiFunctionDoc } from "./abi.js";
-import { genMintCommand } from "./cmds/mint.js";
-import { genRelateCommand, genUnrelateCommand } from "./relate.js";
+import { Argument, Command } from "commander";
+import { Address, createPublicClient, http, SimulateContractParameters } from "viem";
+import { AbiEventOrError, AbiFunctionDoc } from "./abi.js";
+import { submitSimulation } from "./ethereum.js";
+import { Logger } from "./logger.js";
+import { outputOptions, universe, writeOptions } from "./commander-patch.js";
+import { Universe } from "./config.js";
+import { FromOpts } from "./from-opts.js";
 
-interface SubCommands {
-  kind: Command[];
-  set: Command[];
-  relation: Command[];
-  unique: Command[];
-  value: Command[];
-  object: Command[];
-  mintpolicy: Command[];
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const getReadAction = (config: CommandGenConfig, funName: string, abiFunc: AbiFunctionDoc, abi: any) =>
+  async function readAction(this: Command) {
+    const opts = this.opts();
+    const conf = FromOpts.getUniverseConfig(opts);
+    const address = await config.getContract(conf, this.args, abiFunc);
+    const args = (config.getFuncArgs ?? CommandGenDefaults.getFuncArgs)(this.args, abiFunc);
+    const console = new Logger(opts);
+    const publicClient = createPublicClient({ transport: http(conf.rpc) });
+    const result = await publicClient.readContract({ address, abi, functionName: funName, args });
+    console.log(result);
+    console.result(result);
+  };
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const getWriteAction = (config: CommandGenConfig, funcName: string, abiFunc: AbiFunctionDoc, abi: any) =>
+  async function writeAction(this: Command) {
+    const opts = this.opts();
+    const args = (config.getFuncArgs ?? CommandGenDefaults.getFuncArgs)(this.args, abiFunc);
+    const { publicClient, walletClient, conf } = await FromOpts.toWriteEthereum(opts);
+    const address = config.getContract(conf, this.args, abiFunc);
+    const account = walletClient.account;
+    const simulation = { address, abi, functionName: funcName, args, account } as SimulateContractParameters;
+    await submitSimulation(simulation, publicClient, walletClient, new Logger(opts));
+  };
+
+export const getCommandGen = (config: CommandGenConfig) =>
+  function genCmd(cmdName: string) {
+    const { getFuncName, getAbiFuncs, getAbiNonFuncs } = config;
+    const funcName = getFuncName(cmdName);
+    const abiFuncs = getAbiFuncs(funcName);
+    const abiNonFuncs = getAbiNonFuncs(funcName);
+    // console.log(funcName, abiFuncs);
+    const abiFuncDoc = abiFuncs[0];
+    const description = abiFuncDoc._metadata?.notice || "";
+    const isRead = abiFuncDoc.stateMutability == "view" || abiFuncDoc.stateMutability == "pure";
+    const options = isRead ? [universe, ...outputOptions] : [...writeOptions, ...outputOptions];
+    const args = (config.getCmdArgs ?? CommandGenDefaults.getCmdArgs)(abiFuncDoc);
+
+    const abiContract = [...abiFuncs, ...abiNonFuncs];
+    const action = isRead
+      ? getReadAction(config, funcName, abiFuncDoc, abiContract)
+      : getWriteAction(config, funcName, abiFuncDoc, abiContract);
+    return new Command(cmdName).description(description).addOptions(options).addArguments(args).action(action);
+  };
+
+export function makeFuncName(cmdName: string, prefix: string) {
+  return `${prefix}${cmdName[0].toUpperCase()}${cmdName.slice(1)}`;
 }
 
-export function generateCommands(): SubCommands {
-  const kind = abi.funcs.kindRegistry
-    .map(AbiToCommand({ contract: "KindRegistry", nonFuncs: abi.nonFuncs.kindRegistry, cmdName: lstrip("kind") }))
-    .sort(byPreferredOrder);
-
-  const set = [
-    ...abi.funcs.setRegistryAdmin.map(AbiToCommand(setRegistryAdminCmdConfig)),
-    ...abi.funcs.setRegistry
-      .filter(excludes(["setRegister", "setUpdate", "setTouch", "setUpgrade"]))
-      .map(AbiToCommand({ contract: "SetRegistry", nonFuncs: abi.nonFuncs.setRegistry, cmdName: lstrip("set") })),
-  ].sort(byPreferredOrder);
-
-  const relation = abi.funcs.omniRegistry
-    .filter(startsWith("relation"))
-    .map(
-      AbiToCommand({
-        contract: "OmniRegistry",
-        nonFuncs: abi.nonFuncs.omniRegistry,
-        cmdName: lstrip("relation"),
-      })
-    )
-    .sort(byPreferredOrder);
-
-  const unique = abi.funcs.elemRegistry
-    .filter(startsWith("unique"))
-    .map(AbiToCommand({ contract: "ElementRegistry", nonFuncs: abi.nonFuncs.elemRegistry, cmdName: lstrip("unique") }))
-    .sort(byPreferredOrder);
-
-  const value = abi.funcs.elemRegistry
-    .filter(startsWith("value"))
-    .map(AbiToCommand({ contract: "ElementRegistry", nonFuncs: abi.nonFuncs.elemRegistry, cmdName: lstrip("value") }))
-    .sort(byPreferredOrder);
-
-  const object = [
-    genMintCommand(),
-    genRelateCommand(),
-    genUnrelateCommand(),
-    // write functions
-    ...abi.funcs.setContract
-      .filter(includes("update,upgrade,touch,transfer".split(",")))
-      .map(AbiToCommand(setContractObjectCmdConfig)),
-    // read functions
-    ...abi.funcs.setContract
-      .filter(excludes("update,upgrade,touch,transfer,uri,supportsInterface".split(",")))
-      .map(AbiToCommand(setContractObjectCmdConfig)),
-    ...abi.funcs.setContract
-      .filter(includes("uri".split(",")))
-      .map(AbiToCommand({ ...setContractObjectCmdConfig, txnPrepare: objectUriTxnPrepare })),
-  ].sort(byPreferredOrder);
-
-  const mintpolicy = [
-    ...abi.funcs.objectMinterAdmin.map(AbiToCommand(objectMinterAdminCmdConfig)),
-    ...abi.funcs.objectMinter
-      .filter(startsWith("mintPolicy"))
-      .filter(excludes("mintPolicyAdd,mintPolicyEnable,mintPolicyDisable".split(",")))
-      .map(
-        AbiToCommand({ contract: "ObjectMinter", nonFuncs: abi.nonFuncs.objectMinter, cmdName: lstrip("mintPolicy") })
-      ),
-  ].sort(byPreferredOrder);
-
-  return { kind, set, relation, unique, value, mintpolicy, object };
+export interface CommandGenConfig {
+  getFuncName: (cmdName: string) => string;
+  getAbiFuncs: (funcName: string) => AbiFunctionDoc[];
+  getAbiNonFuncs: (funcName: string) => AbiEventOrError[];
+  getContract: (conf: Universe, args: any[], abiFunc: AbiFunctionDoc) => Promise<Address> | Address; // eslint-disable-line
+  getFuncArgs?: (args: any[], abiFunc: AbiFunctionDoc) => any[]; // eslint-disable-line
+  getCmdArgs?: (abiFunc: AbiFunctionDoc) => Argument[];
 }
 
-const setContractObjectCmdConfig: CommandConfig = {
-  contract: "ISet",
-  nonFuncs: [],
-  cmdAbi: function (txnAbi: AbiFunctionDoc): AbiFunctionDoc {
-    return replaceAbiParamAt(txnAbi, 0, {
-      name: "sid",
-      type: "string",
-      doc: "Scoped Object ID (in form of set.id, e.g., 17.1)",
-    });
-  },
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  txnPrepare: async function (ctx: CommandContext): Promise<{ address: Address; tag: string; args: any[] }> {
-    const rawArgs = checkArguments(ctx.cmd.args, ctx.cmdAbi);
-    const [set, id] = rawArgs[0].split(".");
-    const args = [JSON5.parse(id), ...rawArgs.slice(1)];
-    const publicClient = createPublicClient({ transport: http(ctx.conf.rpc) });
-    const address = (await publicClient.readContract({
-      address: ctx.conf.contracts["SetRegistry"] as Address,
-      abi: abi.setContract,
-      functionName: "setContract",
-      args: [set],
-    })) as Address;
-    return { address: address as Address, tag: ctx.contract, args };
-  },
+export const CommandGenDefaults = {
+  getFuncArgs: (args: any[], abiFunc: AbiFunctionDoc) => args, // eslint-disable-line
+  getCmdArgs: (abiFunc: AbiFunctionDoc) =>
+    abiFunc.inputs.map((input) => {
+      const desc = abiFunc._metadata?.params?.[input.name!] || `${input.type} parameter`;
+      return new Argument(`<${input.name}>`, desc);
+    }),
 };
-
-const objectUriTxnPrepare = async function (ctx: CommandContext): Promise<{
-  address: Address;
-  tag: string;
-  args: /* eslint-disable-line @typescript-eslint/no-explicit-any */ any[];
-}> {
-  const rawArgs = checkArguments(ctx.cmd.args, ctx.cmdAbi);
-  // const [set, id] = rawArgs[0].split(".");
-  const set = rawArgs[0].split(".")[0];
-  const publicClient = createPublicClient({ transport: http(ctx.conf.rpc) });
-  const address = (await publicClient.readContract({
-    address: ctx.conf.contracts["SetRegistry"] as Address,
-    abi: abi.setContract,
-    functionName: "setContract",
-    args: [set],
-  })) as Address;
-  return { address: address as Address, tag: ctx.contract, args: [] };
-};
-
-const setRegistryAdminCmdConfig: CommandConfig = {
-  contract: "ISetRegistryAdmin",
-  nonFuncs: abi.nonFuncs.setRegistry,
-  cmdName: rstrip("Set"),
-  cmdAbi: function (txnAbi: AbiFunctionDoc): AbiFunctionDoc {
-    return insertAbiParamAt(txnAbi, 0, {
-      name: "contract",
-      type: "address",
-      doc: "address of the set contract",
-    });
-  },
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  txnPrepare: async function (ctx: CommandContext): Promise<{ address: Address; tag: string; args: any[] }> {
-    const raw = checkArguments(ctx.cmd.args, ctx.cmdAbi);
-    const address = raw[0] as Address;
-    const args = raw.slice(1);
-    return { address, tag: ctx.contract, args };
-  },
-};
-
-const objectMinterAdminCmdConfig: CommandConfig = {
-  contract: "IObjectMinterAdmin",
-  nonFuncs: abi.nonFuncs.objectMinter,
-  cmdName: rstrip("MintPolicy"),
-  cmdAbi: function (txnAbi: AbiFunctionDoc): AbiFunctionDoc {
-    return insertAbiParamAt(txnAbi, 0, {
-      name: "contract",
-      type: "address",
-      doc: "address of the contract",
-    });
-  },
-  txnPrepare: async function (ctx: CommandContext): Promise<{
-    address: Address;
-    tag: string;
-    args: /* eslint-disable-line @typescript-eslint/no-explicit-any */ any[];
-  }> {
-    const raw = checkArguments(ctx.cmd.args, ctx.cmdAbi);
-    const address = raw[0] as Address;
-    const args = raw.slice(1);
-    return { address, tag: ctx.contract, args };
-  },
-};
-
-function AbiToCommand(conf: CommandConfig) {
-  return (txnAbi: AbiFunctionDoc) => configureCommand(txnAbi, conf);
-}
-
-function byPreferredOrder<T extends { name(): string }>(a: T, b: T): number {
-  const ORDER_MAP = new Map(
-    "mint,register,update,upgrade,touch,transfer,relate,unrelate,owner,descriptor,elements,revision,sota,snapshot,status,admint,contract,rule,uri"
-      .split(",")
-      .map((name, index) => [name, index])
-  );
-  const aIndex = ORDER_MAP.get(a.name()) ?? Infinity;
-  const bIndex = ORDER_MAP.get(b.name()) ?? Infinity;
-  return aIndex - bIndex;
-}

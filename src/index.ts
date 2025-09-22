@@ -4,7 +4,7 @@ import { program } from "./program.js";
 
 try {
   await program.parseAsync();
-} catch (e: /*eslint-disable-line @typescript-eslint/no-explicit-any*/ any) {
+} catch (e: any /* eslint-disable-line */) {
   console.error(e.message);
   process.exitCode = 1;
 }
