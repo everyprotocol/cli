@@ -3,7 +3,7 @@ import "@polkadot/api-augment/substrate";
 import * as fs from "fs";
 import * as JSON11 from "json11";
 import columify from "columnify";
-import { guessContentType } from "../utils.js";
+import { computeMatterHash, guessContentType, loadBinary } from "../utils.js";
 import { submitTransaction } from "../substrate.js";
 import { network } from "../commander-patch.js";
 import { Logger } from "../logger.js";
@@ -59,4 +59,29 @@ const matterRegisterCmd = new Command("register")
     console.result(result);
   });
 
-export const matterCmd = new Command("matter").description("manage matters").addCommand(matterRegisterCmd);
+const matterHashCmd = new Command("hash")
+  .description("Register matter on the Substrate chain")
+  .argument("<files...>", "Paths of matter blob files")
+  .option("--mime <string>", "Matter mime")
+  .option("--form <number>", "Matter form", "1")
+  .addOutputOptions()
+  .action(async function (files) {
+    const opts = this.opts();
+    const console = new Logger(opts);
+    const matters = [];
+    for (const file of files) {
+      const [path, form_, mime_] = file.split(":");
+      const form = Number(form_ ?? opts.form ?? "1");
+      const mime = mime_ || opts.mime || guessContentType(path);
+      const blob = loadBinary(path);
+      const hash = computeMatterHash(form, mime, blob);
+      matters.push({ hash, form, mime, blob: blob.length, path });
+    }
+    console.log(columify(matters));
+    console.result(matters);
+  });
+
+export const matterCmd = new Command("matter")
+  .description("matter utilities")
+  .addCommand(matterRegisterCmd)
+  .addCommand(matterHashCmd);
