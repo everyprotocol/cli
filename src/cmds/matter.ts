@@ -13,16 +13,17 @@ const matterRegisterCmd = new Command("register")
   .argument("<files...>", "Paths of matter blob files")
   .option("--mime <string>", "Matter mime")
   .option("--form <number>", "Matter form", "1")
-  .addKeystoreOptions()
   .addOption(network)
+  .addKeystoreOptions()
   .addOutputOptions()
-  .subWriteAction(async (api, pair, files, options) => {
-    const console = new Logger(options);
+  .subWriteAction(async function (api, pair, files) {
+    const opts = this.opts();
+    const console = new Logger(opts);
     const materials = [];
     for (const file of files) {
       const [filePath, form_, mime_] = file.split(":");
-      const form = Number(form_ ?? options.form ?? "1");
-      const mime = mime_ || options.mime || guessContentType(filePath);
+      const form = Number(form_ ?? opts.form ?? "1");
+      const mime = mime_ || opts.mime || guessContentType(filePath);
       materials.push({ filePath, form, mime });
     }
 

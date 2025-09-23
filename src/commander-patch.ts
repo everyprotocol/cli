@@ -60,7 +60,7 @@ export const writeOptions = [universe, account, password, passwordFile, foundry]
 
 (Command.prototype as unknown as Command).subWriteAction = function (fn: SubWriteAction) {
   // eslint-disable-next-line
-  return this.action(async function (this: Command, ...args: any[]) {
+  async function _action(this: Command, ...args: any[]) {
     const opts = this.opts();
     const api = await FromOpts.getSubstrateApi(opts);
     try {
@@ -70,5 +70,6 @@ export const writeOptions = [universe, account, password, passwordFile, foundry]
     } finally {
       await api.disconnect().catch(() => {});
     }
-  });
+  }
+  return this.action(_action);
 };
