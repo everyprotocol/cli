@@ -6,6 +6,7 @@ import { Logger } from "./logger.js";
 import { outputOptions, universe, writeOptions } from "./commander-patch.js";
 import { Universe } from "./config.js";
 import { FromOpts } from "./from-opts.js";
+import { coerceValue } from "./utils.js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const getReadAction = (config: CommandGenConfig, funName: string, abiFunc: AbiFunctionDoc, abi: any) =>
@@ -67,7 +68,8 @@ export interface CommandGenConfig {
 }
 
 export const CommandGenDefaults = {
-  getFuncArgs: (args: any[], abiFunc: AbiFunctionDoc) => args, // eslint-disable-line
+  getFuncArgs: (args: string[], abiFunc: AbiFunctionDoc) =>
+    args.map((arg: string, i: number) => coerceValue(arg, abiFunc.inputs[i])),
   getCmdArgs: (abiFunc: AbiFunctionDoc) =>
     abiFunc.inputs.map((input) => {
       const desc = abiFunc._metadata?.params?.[input.name!] || `${input.type} parameter`;
