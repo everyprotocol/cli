@@ -30,6 +30,10 @@ export const FromOpts = {
   },
 
   getKeystore: async function (opts: OptionValues, account?: string): Promise<UnifiedKeystore> {
+    const name = account ?? opts.account;
+    if (!name) {
+      throw new Error(`account not specified`);
+    }
     const keyFile = FromOpts.getKeystoreFile(opts, account ?? opts.account);
     const keyData = loadJson(keyFile);
     const password = FromOpts.getPassword(opts);
