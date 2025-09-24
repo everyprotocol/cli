@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import { stringify as j11 } from "json11";
+import path from "path";
 
 export class Logger {
   private quiet: boolean;
@@ -31,6 +32,8 @@ export class Logger {
 
     if (this.json) {
       if (typeof this.json === "string") {
+        const dir = path.dirname(this.json);
+        fs.mkdirSync(dir, { recursive: true });
         fs.writeFileSync(this.json, j11(data, opts));
       } else {
         console.log(j11(data, opts)); // stdout
