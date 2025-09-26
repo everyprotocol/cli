@@ -4,7 +4,7 @@ import { parseAbiItem, type AbiFunction, type AbiParameter, erc1155Abi, erc721Ab
 import { abi, AbiFunctionDoc } from "../abi.js";
 import { submitSimulation } from "../ethereum.js";
 import { Logger } from "../logger.js";
-import { parseBigInt, parseNode3, parseNode4 } from "../parsers.js";
+import { parseBigInt, parseNode3, parseNode4, parseSID } from "../parsers.js";
 import { Universe } from "../config.js";
 import { CommandGenConfig, CommandGenDefaults, getCommandGen } from "../cmdgen.js";
 import { FromOpts } from "../from-opts.js";
@@ -73,7 +73,7 @@ const cmdGenConfig: CommandGenConfig = {
     return abiFunc.name == "uri" ? args.slice(1) : [args[0].id, ...args.slice(1)];
   },
   getCmdArgs: function (abiFunc: AbiFunctionDoc) {
-    const sid = new Argument(`<sid>`, "sid of the object");
+    const sid = new Argument(`<sid>`, "sid of the object").argParser(parseSID);
     const args0 = CommandGenDefaults.getCmdArgs(abiFunc);
     return abiFunc.name == "uri" ? [sid] : [sid, ...args0.slice(1)];
   },

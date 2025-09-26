@@ -10,6 +10,17 @@ export function parseBigInt(arg: string): bigint {
   }
 }
 
+export function parseSID(arg: string): { set: bigint; id: bigint } {
+  try {
+    const [s, i] = arg.split(".");
+    const set = BigInt(s);
+    const id = BigInt(i);
+    return { set, id };
+  } catch (e /* eslint-disable-line */) {
+    throw new InvalidArgumentError(`invalid SID: ${arg}`);
+  }
+}
+
 export function parseAccountId(address: string) {
   try {
     return u8aFixLength(decodeAddress(address), 256);

@@ -13,8 +13,8 @@ const getReadAction = (config: CommandGenConfig, funName: string, abiFunc: AbiFu
   async function readAction(this: Command) {
     const opts = this.opts();
     const conf = FromOpts.getUniverseConfig(opts);
-    const address = await config.getContract(conf, this.args, abiFunc);
-    const args = (config.getFuncArgs ?? CommandGenDefaults.getFuncArgs)(this.args, abiFunc);
+    const address = await config.getContract(conf, this.processedArgs, abiFunc);
+    const args = (config.getFuncArgs ?? CommandGenDefaults.getFuncArgs)(this.processedArgs, abiFunc);
     const console = new Logger(opts);
     const publicClient = createPublicClient({ transport: http(conf.rpc) });
     const result = await publicClient.readContract({ address, abi, functionName: funName, args });
