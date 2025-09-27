@@ -1,8 +1,8 @@
 [universes.anvil]
 id = 31337
-rpc = "http://127.0.0.1:8545"
-explorer = "http://127.0.0.1:8545"
+rpc = "http://localhost:8545"
 observer = "dev"
+explorer = "http://localhost"
 
 [universes.anvil.contracts]
 SetRegistry = "0x854C35Fd2b65fE9fcE71dddE91De8c3e1A7Dc8Ae"
@@ -13,5 +13,5 @@ ObjectMinter = "0x12CaBC370b316F247126F3Fab529Ee25e03aE226"
 
 [observers.dev]
 rpc = "ws://localhost:9944"
-gateway = "http://localhost:3456"
-explorer = "http://every.im.local"
+gateway = "http://every.lo"
+explorer = "https://portal.every.fun/?rpc=ws://localhost:9944#/explorer"
