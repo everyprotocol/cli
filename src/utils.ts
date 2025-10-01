@@ -4,7 +4,7 @@ import { fileURLToPath } from "url";
 import { isHex, hexToU8a } from "@polkadot/util";
 import { base64Decode } from "@polkadot/util-crypto/base64";
 import { decodePair } from "@polkadot/keyring/pair/decode";
-import { AbiParameter, getAddress, isAddress, pad, sha256 } from "viem";
+import { AbiParameter, getAddress, isAddress } from "viem";
 import { ApiPromise } from "@polkadot/api";
 import { Command } from "commander";
 import { FromOpts } from "./from-opts.js";
@@ -187,21 +187,4 @@ export function wrapSubAction(fn: SubAction) {
 export function loadBinary(file: string): Uint8Array {
   const buf = fs.readFileSync(file);
   return buf;
-}
-
-export function computeMatterHash(form: number, mime: string, blob: Uint8Array): `0x${string}` {
-  if (!Number.isInteger(form) || form < 0 || form > 255) {
-    throw new Error("form must be uint8 (0..255)");
-  }
-  const mimeUTF8 = new TextEncoder().encode(mime);
-  if (mimeUTF8.length <= 0 || mimeUTF8.length > 31) {
-    throw new Error("form must be uint8 (0..255)");
-  }
-
-  const msg = new Uint8Array(1 + 31 + blob.length);
-  msg[0] = form & 0xff;
-  msg.set(pad(mimeUTF8, { size: 32, dir: "right" }), 1);
-  msg.set(blob, 32);
-  // SHA256(form:1 || mime:31 || blob:var)
-  return sha256(msg);
 }
