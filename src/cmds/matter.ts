@@ -9,7 +9,7 @@ import { network } from "../commander-patch.js";
 import { Logger } from "../logger.js";
 import path from "path";
 import csv from "csv-parser";
-import { fromHex, pad, padBytes, sha256 } from "viem";
+import { fromHex, pad, sha256 } from "viem";
 import { memoize } from "lodash-es";
 
 const matterRegisterCmd = new Command("register")
@@ -239,49 +239,53 @@ function getOutFiles(
 
 async function compileEnumMatter(file: string): Promise<{ blob: Buffer; deps: RegisterInput[] }> {
   const computeHashMemo = memoize(computeHashFile);
+
   const deps = new Map<string, RegisterInput>();
   let rows = 0;
-  let headers: string[];
-  const parser = csv({
-    skipComments: true,
-    strict: true,
-    mapHeaders: ({ header }) => {
-      const h = header.trim().toUpperCase();
-      if (h in CELL_MATTER_FORMS) {
-        return h;
-      } else {
-        throw new Error(`Invalid column element type: ${h}`);
+  let colTypes: string[];
+
+  const mapHeaders = ({ header }: { header: string }) => {
+    const h = header.trim().toUpperCase();
+    if (h in CELL_FORMS) {
+      return h;
+    } else {
+      throw new Error(`Invalid column element type: ${h}`);
+    }
+  };
+
+  const mapValues = ({ header, value }: { header: string; value: string }) => {
+    const v = value.trim();
+    if (v.startsWith("0x")) {
+      return fromHex(pad(v as `0x${string}`, { size: 32, dir: "left" }), "bytes");
+    } else if (header == "IMAGE" || header == "JSON") {
+      const { hash, mime, form, path } = computeHashMemo(v);
+      if (!deps.has(path)) {
+        deps.set(path, { hash, mime, form, path } as RegisterInput);
       }
-    },
-    mapValues: ({ header, value }) => {
-      const v = value.trim();
-      if (v.startsWith("0x")) {
-        return padBytes(v, { size: 32, dir: "left" });
-      } else if (header == "IMAGE" || header == "JSON") {
-        const { hash, mime, form, path } = computeHashMemo(v);
-        if (!deps.has(path)) {
-          deps.set(path, { hash, mime, form, path } as RegisterInput);
-        }
-        return fromHex(hash, "bytes");
-      } else {
-        throw new Error("expect hex strings for cols other than IMAGE, JSON");
-      }
-    },
-  });
+      return fromHex(hash, "bytes");
+    } else {
+      throw new Error("expect hex strings for cols other than IMAGE, JSON");
+    }
+  };
+
+  const aux = parseAuxData(file, { mapValues, mapHeaders });
+  const parser = csv({ skipComments: true, strict: true, mapHeaders, mapValues });
   const blob: Buffer = await new Promise((resolve, reject) => {
     const content: Uint8Array[] = [];
     fs.createReadStream(file)
       .pipe(parser)
-      .on("headers", (hs) => {
-        headers = hs;
+      .on("headers", (headers) => {
+        colTypes = headers;
       })
       .on("data", (data) => {
         Object.values<Uint8Array>(data).forEach((value) => content.push(value));
         rows += 1;
       })
       .on("end", () => {
-        const enumHeader = buildEnumHeader(headers, rows);
-        resolve(Buffer.concat([enumHeader, ...content]));
+        const auxTypes = Object.keys(aux ?? {});
+        const auxValues = Object.values(aux ?? {});
+        const enumHeader = buildEnumHeader(auxTypes, colTypes, rows);
+        resolve(Buffer.concat([enumHeader, ...auxValues, ...content]));
       })
       .on("error", (e: any /* eslint-disable-line */) => {
         reject(e);
@@ -337,47 +341,50 @@ function computeHashFile(file: string): HashOutput {
  * Build a 32-byte EnumMatter header.
  * Layout:
  *   [0..3]   = "ENUM"
- *   [4]      = ver (1)
+ *   [4]      = ver, aux (u8.hi4, u8.lo4)
  *   [5]      = cols (u8)
  *   [6..7]   = rows (u16 LE)
- *   [8..15]  = _unused (u64 = 0)
- *   [16..31] = emtys[16] (u8 tags from headers; unused entries = 0)
+ *   [8..15]  = aux_types [u8; 8]
+ *   [16..31] = col_types [u8; 16]
  */
-export function buildEnumHeader(elemTypes: string[], rows = 0): Uint8Array {
-  if (!Array.isArray(elemTypes) || elemTypes.length === 0) {
+function buildEnumHeader(auxTypes: string[], colTypes: string[], rows = 0): Uint8Array {
+  if (colTypes.length === 0 && auxTypes.length === 0) {
     throw new Error("Empty header list");
   }
-  if (elemTypes.length > 16) {
-    throw new Error(`Too many columns (max 16): ${elemTypes.length}`);
+  if (auxTypes.length > 8) {
+    throw new Error(`Too many aux types (max 8): ${auxTypes.length}`);
+  }
+  if (colTypes.length > 16) {
+    throw new Error(`Too many column types (max 16): ${colTypes.length}`);
   }
   if (rows < 0 || rows > 0xffff) {
     throw new Error(`Rows out of range: ${rows}`);
   }
-  const emtys = elemTypes.map(formByName);
   const buf = new Uint8Array(32);
   buf.set([0x45, 0x4e, 0x55, 0x4d], 0); // magic "ENUM"
-  buf[4] = 0x01; // version
-  buf[5] = elemTypes.length & 0xff; // cols
+  buf[4] = (0x01 << 4) | (auxTypes.length & 0x0f); // version(hi4), aux(lo4)
+  buf[5] = colTypes.length; // cols
   buf[6] = rows & 0xff; // rows.lo
   buf[7] = (rows >>> 8) & 0xff; // rows.hi
-  // buf[8..16] skipped
-  for (let i = 0; i < emtys.length; i++) buf[16 + i] = emtys[i]; // emtys
+  auxTypes.forEach((t, i) => (buf[8 + i] = formByName(t))); // aux types
+  colTypes.forEach((t, i) => (buf[16 + i] = formByName(t))); // col types
   return buf;
 }
 
-export const MATTER_FORMS: Record<string, number> = {
+const MATTER_FORMS: Record<string, number> = {
   // Simple
   JSON: 0x01,
   IMAGE: 0x02,
-  WASM: 0x03,
-  // Complex
-  ENUM: 0xe0,
-  PERM: 0xe1,
+  // Code
+  WASM: 0xc0,
+  // Data
+  ENUM: 0xd0,
+  PERM: 0xd1,
   // Info
   INFO: 0xff,
 } as const;
 
-export const CELL_MATTER_FORMS: Record<string, number> = {
+const CELL_FORMS: Record<string, number> = {
   JSON: 0x01,
   IMAGE: 0x02,
   INFO: 0xff,
@@ -394,10 +401,10 @@ function formByName(name: string): number {
 function inferMatterMeta(filePath: string): MatterMeta {
   const ext = path.extname(filePath);
   switch (ext) {
-    case ".json":
-      return { mime: "application/json", form: MATTER_FORMS.JSON };
     case ".wasm":
       return { mime: "application/wasm", form: MATTER_FORMS.WASM };
+    case ".json":
+      return { mime: "application/json", form: MATTER_FORMS.JSON };
     case ".jpg":
       return { mime: "image/jpeg", form: MATTER_FORMS.IMAGE };
     case ".jpeg":
@@ -406,13 +413,60 @@ function inferMatterMeta(filePath: string): MatterMeta {
       return { mime: "image/png", form: MATTER_FORMS.IMAGE };
     case ".bin":
       if (filePath.endsWith(".enum.bin")) {
-        return { mime: "application/binary", form: MATTER_FORMS.ENUM };
+        return { mime: "application/vnd.every.enum", form: MATTER_FORMS.ENUM };
       } else if (filePath.endsWith(".perm.bin")) {
-        return { mime: "application/binary", form: MATTER_FORMS.PERM };
+        return { mime: "application/vnd.every.perm", form: MATTER_FORMS.PERM };
       } else {
         throw new Error("unknown matter file extension");
       }
     default:
       throw new Error("unknown matter file extension");
   }
+}
+
+type MapHeadersFn = (args: { header: string; index: number }) => string | null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type MapValuesFn = (args: { header: string; index: number; value: string }) => any;
+
+interface ParserOptions {
+  mapHeaders?: MapHeadersFn;
+  mapValues?: MapValuesFn;
+}
+
+function parseAuxData(filePath: string, options: ParserOptions): { [key: string]: Uint8Array } | undefined {
+  const lines = readPrologue(filePath)
+    .filter((l) => /^\s*#\s*@aux\s+/i.test(l))
+    .map((l) => l.replace(/^\s*#\s*@aux\s+/i, "").trim());
+  const mapHeaders: MapHeadersFn = options.mapHeaders ?? (({ header }) => header);
+  const mapValues: MapValuesFn = options.mapValues ?? (({ value }) => value);
+  if (lines.length == 0) {
+    return undefined;
+  } else if (lines.length == 2) {
+    const headers = lines[0].split(",").map((header, index) => mapHeaders({ header, index }));
+    const parts = lines[1].split(",");
+    if (parts.length != headers.length) {
+      throw new Error("aux header and values mismatch");
+    }
+    const values = parts.map((value, index) => mapValues({ header: headers[index]!, index, value }));
+    return Object.fromEntries(headers.map((h, i) => [h, values[i]]));
+  } else {
+    throw new Error("invalid aux data");
+  }
+}
+
+function readPrologue(filePath: string, maxBytes = 2048): string[] {
+  const fd = fs.openSync(filePath, "r");
+  const buf = Buffer.alloc(maxBytes);
+  const bytesRead = fs.readSync(fd, buf, 0, maxBytes, 0);
+  fs.closeSync(fd);
+  const lines = buf.subarray(0, bytesRead).toString("utf8").split(/\r?\n/);
+  const prologue: string[] = [];
+  for (const line of lines) {
+    if (line.trim().startsWith("#")) {
+      prologue.push(line);
+    } else if (line.trim().length > 0) {
+      break; // stop at the first non-comment, non-empty line
+    }
+  }
+  return prologue;
 }
