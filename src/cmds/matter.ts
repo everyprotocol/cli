@@ -120,11 +120,29 @@ const matterHashCmd = new Command("hash")
     console.result(outputs);
   });
 
+export const matterPickCmd = new Command("pick")
+  .description("Pick matter hashes from a hash output file")
+  .argument("<files...>", "Paths of the matter files")
+  .option("--from <file>", "Path to the hash output file", "register/hashes.json")
+  .action(function (files: string[]) {
+    const opts = this.opts<{ from: string }>();
+    const list = loadJson(opts.from);
+    if (!Array.isArray(list)) throw new Error(`Expected an array in ${opts.from}`);
+    const hashes = list as { path: string; hash: string }[];
+    const result = files.map((file) => {
+      const rec = hashes.find((r) => r.path === file);
+      if (!rec) throw new Error(`No hash found for: ${file}`);
+      return rec.hash;
+    });
+    console.log(result.join(" "));
+  });
+
 export const matterCmd = new Command("matter")
   .description("matter utilities")
   .addCommand(matterRegisterCmd)
   .addCommand(matterCompileCmd)
-  .addCommand(matterHashCmd);
+  .addCommand(matterHashCmd)
+  .addCommand(matterPickCmd);
 
 type MatterFileType = "blob" | "manifest" | "raw";
 
