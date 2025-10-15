@@ -11,12 +11,11 @@ export const foundry = new Option("-f, --foundry", "Use foundry keystores (~/.fo
 export const universe = new Option("-u, --universe <universe>", "Universe name").default("anvil");
 export const network = new Option("-n, --network <network>", "Network name").default("dev");
 
-export const json = new Option("-j, --json [file]", "Output result as JSON to stdout or file, implies --quiet");
+export const json = new Option("-j, --json [file]", "Output result as JSON to stdout or file");
 export const quiet = new Option("-q, --quiet", "Suppress info messages");
-export const noQuiet = new Option("--no-quiet", "Force info messages even when --json is set");
 
 export const keystoreOptions = [account, password, passwordFile, foundry];
-export const outputOptions = [json, quiet, noQuiet];
+export const outputOptions = [json, quiet];
 export const writeOptions = [universe, account, password, passwordFile, foundry];
 
 (Command.prototype as unknown as Command).addCommands = function (commands: Command[]) {
@@ -39,7 +38,7 @@ export const writeOptions = [universe, account, password, passwordFile, foundry]
 };
 
 (Command.prototype as unknown as Command).addOutputOptions = function () {
-  return (this as Command).addOptions([json, quiet, noQuiet]);
+  return (this as Command).addOptions([json, quiet]);
 };
 
 (Command.prototype as unknown as Command).addWriteOptions = function () {

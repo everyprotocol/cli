@@ -7,7 +7,7 @@ export class Logger {
   private json: string | boolean;
 
   constructor(opts: { quiet?: boolean; json?: string | boolean } = {}) {
-    this.quiet = opts.quiet ?? !!opts.json;
+    this.quiet = opts.quiet ?? false;
     this.json = opts.json ?? false;
   }
 
