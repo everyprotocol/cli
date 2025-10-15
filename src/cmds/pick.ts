@@ -3,6 +3,7 @@ import path from "node:path";
 import jp from "jsonpath";
 import * as _ from "lodash-es";
 import { Command } from "commander";
+import { loadMergedConfig } from "../config.js";
 
 type PickRule = {
   file: string; // relative to --from
@@ -11,14 +12,21 @@ type PickRule = {
 };
 
 const DEFAULT_DIR = "./register";
+const DEFAULT_UNIVERSE = "anvil";
 
 const STATIC_RULES: Record<string, PickRule> = {
+  // config
+  "universe.id": { file: "config://universe.json", root: "$", field: "id" },
+  "universe.sreg": { file: "config://universe.json", root: "$", field: "contracts.SetRegistry" },
+  "universe.oreg": { file: "config://universe.json", root: "$", field: "contracts.OmniRegistry" },
+  "universe.kreg": { file: "config://universe.json", root: "$", field: "contracts.KindRegistry" },
+  "universe.ereg": { file: "config://universe.json", root: "$", field: "contracts.ElementRegistry" },
+  "universe.minter": { file: "config://universe.json", root: "$", field: "contracts.ObjectMinter" },
+  "universe.rpc": { file: "config://universe.json", root: "$", field: "rpc" },
+  "universe.observer": { file: "config://universe.json", root: "$", field: "observer" },
   // contract
-  "deploy.addr": {
-    file: "deploy.json",
-    root: "$",
-    field: "deployedTo",
-  },
+  "deploy.addr": { file: "deploy.json", root: "$", field: "deployedTo" },
+  "contract.addr": { file: "contract.json", root: "$", field: "deployedTo" },
   // kind
   "kind.id": { file: "kind.json", root: "$.events[?(@.name=='KindRegistered')].data", field: "id" },
   "kind.rev": { file: "kind.json", root: "$.events[?(@.name=='KindRegistered')].data.desc", field: "rev" },
@@ -113,13 +121,25 @@ export const pickCmd = new Command("pick")
   .description("Pick values from outputs")
   .argument("<keys...>", "Keys to resolve")
   .option("--from <dir>", "Output directory", DEFAULT_DIR)
+  .option("-u, --universe <name>", "Universe name", DEFAULT_UNIVERSE)
   .action(function (keys: string[]) {
-    const { from } = this.opts<{ from: string }>();
-    const dir = from || DEFAULT_DIR;
+    const { from, universe } = this.opts<{ from: string; universe: string }>();
     const loadJsonCache = _.memoize((rel: string) => {
-      const full = path.join(dir, rel);
+      if (rel == "config://universe.json") {
+        return loadUniverseConfig(universe);
+      }
+      const full = path.join(from, rel);
       return loadJson(full);
     });
     const outputs = keys.map((key) => pickOnce(loadJsonCache, key));
     console.log(outputs.join(" "));
   });
+
+function loadUniverseConfig(universe: string) {
+  const config = loadMergedConfig();
+  const uniConf = config.universes?.[universe];
+  if (!uniConf) {
+    throw new Error(`config for universe ${universe} not found`);
+  }
+  return uniConf;
+}
