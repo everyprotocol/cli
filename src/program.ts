@@ -12,6 +12,7 @@ import { setCmd } from "./cmds/set.js";
 import { objectCmd } from "./cmds/object.js";
 import { minterCmd } from "./cmds/minter.js";
 import { universeCmd } from "./cmds/universe.js";
+import { pickCmd } from "./cmds/pick.js";
 
 export const program = new Command("every")
   .description("CLI for interacting with Every Protocol")
@@ -28,4 +29,5 @@ export const program = new Command("every")
   .addCommand(minterCmd)
   .addCommand(balanceCmd)
   .addCommand(walletCmd)
-  .addCommand(configCmd);
+  .addCommand(configCmd)
+  .addCommand(pickCmd, { hidden: true });
