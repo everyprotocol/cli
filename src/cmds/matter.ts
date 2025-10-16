@@ -302,7 +302,7 @@ async function compileEnumMatter(file: string): Promise<{ blob: Buffer; deps: Re
       .on("end", () => {
         const auxTypes = Object.keys(aux ?? {});
         const auxValues = Object.values(aux ?? {});
-        const enumHeader = buildEnumHeader(auxTypes, colTypes, rows);
+        const enumHeader = buildEnumHeader(auxTypes ?? [], colTypes ?? [], rows);
         resolve(Buffer.concat([enumHeader, ...auxValues, ...content]));
       })
       .on("error", (e: any /* eslint-disable-line */) => {
@@ -366,22 +366,24 @@ function computeHashFile(file: string): HashOutput {
  *   [16..31] = col_types [u8; 16]
  */
 function buildEnumHeader(auxTypes: string[], colTypes: string[], rows = 0): Uint8Array {
-  if (colTypes.length === 0 && auxTypes.length === 0) {
+  const colTypesLen = colTypes.length;
+  const auxTypesLen = auxTypes.length;
+  if (colTypesLen + auxTypesLen == 0) {
     throw new Error("Empty header list");
   }
-  if (auxTypes.length > 8) {
-    throw new Error(`Too many aux types (max 8): ${auxTypes.length}`);
+  if (auxTypesLen > 8) {
+    throw new Error(`Too many aux types (max 8): ${auxTypesLen}`);
   }
-  if (colTypes.length > 16) {
-    throw new Error(`Too many column types (max 16): ${colTypes.length}`);
+  if (colTypesLen > 16) {
+    throw new Error(`Too many column types (max 16): ${colTypesLen}`);
   }
   if (rows < 0 || rows > 0xffff) {
     throw new Error(`Rows out of range: ${rows}`);
   }
   const buf = new Uint8Array(32);
   buf.set([0x45, 0x4e, 0x55, 0x4d], 0); // magic "ENUM"
-  buf[4] = (0x01 << 4) | (auxTypes.length & 0x0f); // version(hi4), aux(lo4)
-  buf[5] = colTypes.length; // cols
+  buf[4] = (0x01 << 4) | (auxTypesLen & 0x0f); // version(hi4), aux(lo4)
+  buf[5] = colTypesLen; // cols
   buf[6] = rows & 0xff; // rows.lo
   buf[7] = (rows >>> 8) & 0xff; // rows.hi
   auxTypes.forEach((t, i) => (buf[8 + i] = formByName(t))); // aux types
