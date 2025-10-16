@@ -271,12 +271,22 @@ async function compileEnumMatter(file: string): Promise<{ blob: Buffer; deps: Re
     }
   };
 
+  function resolvePath(v: string): string {
+    if (path.isAbsolute(v)) return v;
+    const dir = path.dirname(file);
+    if (path.isAbsolute(file)) {
+      return path.resolve(dir, v);
+    } else {
+      return path.normalize(path.join(dir, v));
+    }
+  }
+
   const mapValues = ({ header, value }: { header: string; value: string }) => {
     const v = value.trim();
     if (v.startsWith("0x")) {
       return fromHex(pad(v as `0x${string}`, { size: 32, dir: "left" }), "bytes");
     } else if (header == "IMAGE" || header == "JSON") {
-      const { hash, mime, form, path } = computeHashMemo(v);
+      const { hash, mime, form, path } = computeHashMemo(resolvePath(v));
       if (!deps.has(path)) {
         deps.set(path, { hash, mime, form, path } as RegisterInput);
       }
