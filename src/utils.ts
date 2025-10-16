@@ -188,3 +188,29 @@ export function loadBinary(file: string): Uint8Array {
   const buf = fs.readFileSync(file);
   return buf;
 }
+
+export function readKindElements(file: string): number[] {
+  const buf = fs.readFileSync(file);
+  const mod = new WebAssembly.Module(buf); // sync
+  const [section] = WebAssembly.Module.customSections(mod, "kindelms");
+  if (!section) throw new Error(`Section "kindelms" not found in ${file}`);
+  return Array.from(new Uint8Array(section));
+}
+
+export function toElementType(v: string | number): number {
+  const n = typeof v === "number" ? v : v.startsWith("0x") ? Number.parseInt(v.slice(2), 16) : Number.parseInt(v, 10);
+
+  if (!Number.isInteger(n) || n < 1 || n > 255) {
+    throw new Error(`Invalid element type: ${v} (must be 1–255)`);
+  }
+  return n;
+}
+
+export function toRelationId(v: string | bigint): bigint {
+  const n = typeof v === "bigint" ? v : BigInt(v);
+  const U48_MAX = (1n << 48n) - 1n;
+  if (n < 1n || n > U48_MAX) {
+    throw new Error(`Invalid relation id: ${String(v)} (must be between 1 and ${U48_MAX})`);
+  }
+  return n;
+}

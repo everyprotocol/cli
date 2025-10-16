@@ -1,4 +1,4 @@
-import { Argument, Command } from "commander";
+import { Argument, Command, Option } from "commander";
 import { Address, createPublicClient, http, SimulateContractParameters } from "viem";
 import { AbiEventOrError, AbiFunctionDoc } from "./abi.js";
 import { submitSimulation } from "./ethereum.js";
@@ -14,7 +14,7 @@ const getReadAction = (config: CommandGenConfig, funName: string, abiFunc: AbiFu
     const opts = this.opts();
     const conf = FromOpts.getUniverseConfig(opts);
     const address = await config.getContract(conf, this.processedArgs, abiFunc);
-    const args = (config.getFuncArgs ?? CommandGenDefaults.getFuncArgs)(this.processedArgs, abiFunc);
+    const args = (config.getFuncArgs ?? CommandGenDefaults.getFuncArgs)(this.processedArgs, abiFunc, opts);
     const console = new Logger(opts);
     const publicClient = createPublicClient({ transport: http(conf.rpc) });
     const result = await publicClient.readContract({ address, abi, functionName: funName, args });
@@ -26,7 +26,7 @@ const getReadAction = (config: CommandGenConfig, funName: string, abiFunc: AbiFu
 const getWriteAction = (config: CommandGenConfig, funcName: string, abiFunc: AbiFunctionDoc, abi: any) =>
   async function writeAction(this: Command) {
     const opts = this.opts();
-    const args = (config.getFuncArgs ?? CommandGenDefaults.getFuncArgs)(this.args, abiFunc);
+    const args = (config.getFuncArgs ?? CommandGenDefaults.getFuncArgs)(this.args, abiFunc, opts);
     const { publicClient, walletClient, conf } = await FromOpts.toWriteEthereum(opts);
     const address = config.getContract(conf, this.args, abiFunc);
     const account = walletClient.account;
@@ -44,7 +44,8 @@ export const getCommandGen = (config: CommandGenConfig) =>
     const abiFuncDoc = abiFuncs[0];
     const description = abiFuncDoc._metadata?.notice || "";
     const isRead = abiFuncDoc.stateMutability == "view" || abiFuncDoc.stateMutability == "pure";
-    const options = isRead ? [universe, ...outputOptions] : [...writeOptions, ...outputOptions];
+    // const options = isRead ? [universe, ...outputOptions] : [...writeOptions, ...outputOptions];
+    const options = (config.getCmdOpts ?? CommandGenDefaults.getCmdOpts)(abiFuncDoc);
     const args = (config.getCmdArgs ?? CommandGenDefaults.getCmdArgs)(abiFuncDoc);
 
     const abiContract = [...abiFuncs, ...abiNonFuncs];
@@ -63,13 +64,19 @@ export interface CommandGenConfig {
   getAbiFuncs: (funcName: string) => AbiFunctionDoc[];
   getAbiNonFuncs: (funcName: string) => AbiEventOrError[];
   getContract: (conf: Universe, args: any[], abiFunc: AbiFunctionDoc) => Promise<Address> | Address; // eslint-disable-line
-  getFuncArgs?: (args: any[], abiFunc: AbiFunctionDoc) => any[]; // eslint-disable-line
+  getFuncArgs?: (args: any[], abiFunc: AbiFunctionDoc, opts?: any) => any[]; // eslint-disable-line
+  getCmdOpts?: (abiFunc: AbiFunctionDoc) => Option[];
   getCmdArgs?: (abiFunc: AbiFunctionDoc) => Argument[];
 }
 
 export const CommandGenDefaults = {
-  getFuncArgs: (args: string[], abiFunc: AbiFunctionDoc) =>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
+  getFuncArgs: (args: string[], abiFunc: AbiFunctionDoc, opts?: any) =>
     args.map((arg: string, i: number) => coerceValue(arg, abiFunc.inputs[i])),
+  getCmdOpts: (abiFunc: AbiFunctionDoc) => {
+    const isRead = abiFunc.stateMutability == "view" || abiFunc.stateMutability == "pure";
+    return isRead ? [universe, ...outputOptions] : [...writeOptions, ...outputOptions];
+  },
   getCmdArgs: (abiFunc: AbiFunctionDoc) =>
     abiFunc.inputs.map((input) => {
       const desc = abiFunc._metadata?.params?.[input.name!] || `${input.type} parameter`;
