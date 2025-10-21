@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import * as JSON11 from "json11";
 import { isHex, hexToU8a } from "@polkadot/util";
 import { base64Decode } from "@polkadot/util-crypto/base64";
 import { decodePair } from "@polkadot/keyring/pair/decode";
@@ -213,4 +214,16 @@ export function toRelationId(v: string | bigint): bigint {
     throw new Error(`Invalid relation id: ${String(v)} (must be between 1 and ${U48_MAX})`);
   }
   return n;
+}
+
+export function stringify(v: unknown, options?: unknown): string {
+  return JSON11.stringify(v, options ?? { quoteNames: true, quote: '"', withBigInt: false });
+}
+
+export function j11String(v: unknown, options?: unknown): string {
+  return JSON11.stringify(v, options);
+}
+
+export function j11Parse(str: string): unknown {
+  return JSON11.parse(str);
 }
