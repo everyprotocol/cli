@@ -5,11 +5,11 @@ observer = "local"
 explorer = "http://localhost"
 
 [universes.local.contracts]
-SetRegistry = "0x5b6C313987497dD4625Cc3953070CD3bD7Eaf867"
-OmniRegistry = "0x66bc6E783A49078AdC8B159657e59623CF39b162"
-KindRegistry = "0xCeA503d28e8Bb1466cc9a1a37a542b718AC26c4a"
-ElementRegistry = "0xBD9f9306807a75EB72F9a5Bbe9b52B3CeB63A4Fb"
-ObjectMinter = "0x0Ca78907Ff1a06C100939B71091914D5973b0Ade"
+SetRegistry = "0x2207E9e55713403277A96C40D330574d9991D249"
+OmniRegistry = "0xb841E3454A9174cfcd8F11ff64b8868ADC94A7D5"
+KindRegistry = "0x359F63D61f3999a57D8deD95fd041DDdE5e36C75"
+ElementRegistry = "0xb2ee543b6Ab2611611ec63784625bB25bD2B504d"
+ObjectMinter = "0x25729E830801B7BB6C9670D3CF6D6E922caCC8B7"
 
 [universes.ethereum-alpha]
 id = 11155111
