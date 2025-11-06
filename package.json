@@ -2,6 +2,10 @@
   "name": "@everyprotocol/every-cli",
   "type": "module",
   "version": "0.1.10",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/everyprotocol/cli.git"
+  },
   "files": [
     "dist/",
     "abis/",
@@ -48,8 +52,8 @@
   "scripts": {
     "build": "npm run tsc -b",
     "clean": "rm -rf dist",
-    "bb": "bun build src/*.ts --target=node --outdir dist",
-    "prepublishOnly": "npm run build"
+    "b": "bun build src/*.ts --target=node --outdir dist",
+    "prepack": "npm run build"
   },
   "publishConfig": {
     "access": "public"

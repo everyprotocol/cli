@@ -19,6 +19,9 @@ jobs:
   publish-npm:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -26,6 +29,5 @@ jobs:
           bun-version-file: ".bun-version"
           registry-url: https://registry.npmjs.org/
       - run: bun install --frozen-lockfile
-      - run: bun publish
-        env:
-          NPM_CONFIG_TOKEN: ${{secrets.NPM_TOKEN}}
+      - run: bun pm pack --filename everyprotocol-every-cli.tgz
+      - run: npm publish ./everyprotocol-every-cli.tgz --provenance
