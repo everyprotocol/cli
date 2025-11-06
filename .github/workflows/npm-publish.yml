@@ -29,8 +29,6 @@ jobs:
         with:
           bun-version-file: ".bun-version"
           registry-url: https://registry.npmjs.org/
-      # Trusted publishing requires npm CLI version 11.5.1 or later
-      - run: npm install -g npm@latest
       - run: bun install --frozen-lockfile
       - run: bun pm pack --filename everyprotocol-every-cli.tgz
-      - run: npm publish ./everyprotocol-every-cli.tgz
+      - run: npx -y npm@latest publish everyprotocol-every-cli.tgz
