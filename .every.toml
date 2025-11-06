@@ -1,17 +1,53 @@
-[universes.anvil]
+[universes.local]
 id = 31337
 rpc = "http://localhost:8545"
-observer = "dev"
+observer = "local"
 explorer = "http://localhost"
 
-[universes.anvil.contracts]
-SetRegistry = "0x854C35Fd2b65fE9fcE71dddE91De8c3e1A7Dc8Ae"
-OmniRegistry = "0x4b7fc108F2c4fCDD990240448D2eED8034713c7D"
-KindRegistry = "0x7A8B3E5A9c227858C5917b7de8ba1684Cd868630"
-ElementRegistry = "0x8De1EE1dbAE2Ffd1CAe1e6bA83E6cAede1461507"
-ObjectMinter = "0x12CaBC370b316F247126F3Fab529Ee25e03aE226"
+[universes.local.contracts]
+SetRegistry = "0x5b6C313987497dD4625Cc3953070CD3bD7Eaf867"
+OmniRegistry = "0x66bc6E783A49078AdC8B159657e59623CF39b162"
+KindRegistry = "0xCeA503d28e8Bb1466cc9a1a37a542b718AC26c4a"
+ElementRegistry = "0xBD9f9306807a75EB72F9a5Bbe9b52B3CeB63A4Fb"
+ObjectMinter = "0x0Ca78907Ff1a06C100939B71091914D5973b0Ade"
 
-[observers.dev]
+[universes.ethereum-alpha]
+id = 11155111
+rpc = "https://eth-sepolia.g.alchemy.com/v2/BI83rsifAeoz4ZEQkWu6yC0IaOHDBTIE"
+observer = "devnet"
+explorer = "https://sepolia.etherscan.io"
+
+[universes.ethereum-alpha.contracts]
+SetRegistry = "0xdd87c04d79efDF668F3ad5Cd06fF45d75E5b1734"
+OmniRegistry = "0x8906Fa8b9749207e819c76Fc7D1B26d185b58eF8"
+KindRegistry = "0x8a26F2DdD9382fc193f6A2eFc6C3BB14A47f522c"
+ElementRegistry = "0x74D8673d9d2E5B475b8C4558F1E5756Dc190638E"
+ObjectMinter = "0xC2dd118038127b5f9eA048B65d17500Fe022CcAD"
+
+[universes.ethereum-beta]
+id = 11155111
+rpc = "https://eth-sepolia.g.alchemy.com/v2/BI83rsifAeoz4ZEQkWu6yC0IaOHDBTIE"
+observer = "testnet"
+explorer = "https://sepolia.etherscan.io"
+
+[universes.ethereum-beta.contracts]
+SetRegistry = "0x42aaDB79D6015a6a5c1419276a8f7286298Db174"
+OmniRegistry = "0x8D696bD0ff8272e4BcC901cC7b360cC8e55Ade69"
+KindRegistry = "0x63ed128a5584c959Bd8709a440A6035CE90DfeA7"
+ElementRegistry = "0x24b07562939663B06aAEF3FD9eC387e646077e6b"
+ObjectMinter = "0x0E44f5440C972dB6ca809F93aCa7A7DeA6C432b7"
+
+[observers.local]
 rpc = "ws://localhost:9944"
 gateway = "http://every.lo"
 explorer = "https://portal.every.fun/?rpc=ws://localhost:9944#/explorer"
+
+[observers.devnet]
+rpc = "wss://devnet.every.network"
+gateway = "http://every.bz"
+explorer = "https://portal.every.fun/?rpc=wss://devnet.every.network#/explorer"
+
+[observers.testnet]
+rpc = "wss://testnet.every.network"
+gateway = "http://every.im"
+explorer = "https://portal.every.fun/?rpc=wss://testnet.every.network#/explorer"

@@ -8,8 +8,8 @@ export const passwordFile = new Option("-P, --password-file <file>", "File conta
 export const privateKey = new Option("-k, --private-key <key>", "Private key to sign the transaction");
 export const foundry = new Option("-f, --foundry", "Use foundry keystores (~/.foundry/keystores)");
 
-export const universe = new Option("-u, --universe <universe>", "Universe name").default("anvil");
-export const network = new Option("-n, --network <network>", "Network name").default("dev");
+export const universe = new Option("-u, --universe <universe>", "Universe name").default("local");
+export const network = new Option("-n, --network <network>", "Network name").default("local");
 
 export const json = new Option("-j, --json [file]", "Output result as JSON to stdout or file");
 export const quiet = new Option("-q, --quiet", "Suppress info messages");

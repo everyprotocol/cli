@@ -12,7 +12,7 @@ type PickRule = {
 };
 
 const DEFAULT_DIR = "./register";
-const DEFAULT_UNIVERSE = "anvil";
+const DEFAULT_UNIVERSE = "local";
 
 const STATIC_RULES: Record<string, PickRule> = {
   // config
