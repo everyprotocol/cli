@@ -17,6 +17,7 @@ jobs:
       - run: bun test
 
   publish-npm:
+    environment: npm-publish
     needs: build
     runs-on: ubuntu-latest
     permissions:
