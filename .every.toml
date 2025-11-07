@@ -11,26 +11,26 @@ KindRegistry = "0x359F63D61f3999a57D8deD95fd041DDdE5e36C75"
 ElementRegistry = "0xb2ee543b6Ab2611611ec63784625bB25bD2B504d"
 ObjectMinter = "0x25729E830801B7BB6C9670D3CF6D6E922caCC8B7"
 
-[universes.ethereum-alpha]
+[universes.sepolia-]
 id = 11155111
 rpc = "https://eth-sepolia.g.alchemy.com/v2/BI83rsifAeoz4ZEQkWu6yC0IaOHDBTIE"
 observer = "devnet"
 explorer = "https://sepolia.etherscan.io"
 
-[universes.ethereum-alpha.contracts]
+[universes.sepolia-.contracts]
 SetRegistry = "0xdd87c04d79efDF668F3ad5Cd06fF45d75E5b1734"
 OmniRegistry = "0x8906Fa8b9749207e819c76Fc7D1B26d185b58eF8"
 KindRegistry = "0x8a26F2DdD9382fc193f6A2eFc6C3BB14A47f522c"
 ElementRegistry = "0x74D8673d9d2E5B475b8C4558F1E5756Dc190638E"
 ObjectMinter = "0xC2dd118038127b5f9eA048B65d17500Fe022CcAD"
 
-[universes.ethereum-beta]
+[universes.sepolia]
 id = 11155111
 rpc = "https://eth-sepolia.g.alchemy.com/v2/BI83rsifAeoz4ZEQkWu6yC0IaOHDBTIE"
 observer = "testnet"
 explorer = "https://sepolia.etherscan.io"
 
-[universes.ethereum-beta.contracts]
+[universes.sepolia.contracts]
 SetRegistry = "0x42aaDB79D6015a6a5c1419276a8f7286298Db174"
 OmniRegistry = "0x8D696bD0ff8272e4BcC901cC7b360cC8e55Ade69"
 KindRegistry = "0x63ed128a5584c959Bd8709a440A6035CE90DfeA7"
