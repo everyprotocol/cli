@@ -57,9 +57,9 @@ function genRegisterCmd() {
     return args;
   }
 
-  async function getCmdAction(cmd: Command) {
-    const opts = cmd.opts();
-    const args = getFuncArgs(cmd);
+  async function getCmdAction(this: Command) {
+    const opts = this.opts();
+    const args = getFuncArgs(this);
     const { publicClient, walletClient, conf } = await FromOpts.toWriteEthereum(opts);
     const address = conf.contracts.KindRegistry as `0x${string}`;
     const account = walletClient.account;
@@ -120,9 +120,9 @@ function genUpdateCmd() {
     return [args, abiFunc];
   }
 
-  async function getCmdAction(cmd: Command) {
-    const opts = cmd.opts();
-    const [args, abiFunc] = getFuncArgs(cmd);
+  async function getCmdAction(this: Command) {
+    const opts = this.opts();
+    const [args, abiFunc] = getFuncArgs(this);
     const { publicClient, walletClient, conf } = await FromOpts.toWriteEthereum(opts);
     const address = conf.contracts.KindRegistry as `0x${string}`;
     const account = walletClient.account;
