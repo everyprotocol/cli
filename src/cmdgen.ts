@@ -31,7 +31,6 @@ const getWriteAction = (config: CommandGenConfig, funcName: string, abiFunc: Abi
     const address = config.getContract(conf, this.args, abiFunc);
     const account = walletClient.account;
     const simulation = { address, abi, functionName: funcName, args, account } as SimulateContractParameters;
-    console.log({ address, functionName: funcName, args, account });
     await submitSimulation(simulation, publicClient, walletClient, new Logger(opts));
   };
 

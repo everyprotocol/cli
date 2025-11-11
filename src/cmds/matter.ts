@@ -5,7 +5,7 @@ import path from "path";
 import columify from "columnify";
 import { j11String, loadBinary, loadJson } from "../utils.js";
 import { submitTransaction } from "../substrate.js";
-import { network } from "../commander-patch.js";
+import { network, universe } from "../commander-patch.js";
 import { Logger } from "../logger.js";
 import {
   compileEnumCsv,
@@ -21,6 +21,7 @@ const matterRegisterCmd = new Command("register")
   .description("Register matters")
   .argument("<files...>", "Paths of matter blob files")
   .addOption(network)
+  .addOption(universe)
   .addKeystoreOptions()
   .addOutputOptions()
   .subWriteAction(async function (api, pair, files) {

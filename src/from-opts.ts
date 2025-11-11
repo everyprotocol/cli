@@ -76,22 +76,21 @@ export const FromOpts = {
     return universe;
   },
 
-  getObserverConfig: function (options: OptionValues): Observer {
+  getObserverConfig: function (opts: OptionValues): Observer {
     const conf = loadMergedConfig();
     let observerName: string | undefined;
-    const DEFAULT_OBSERVER = "localnet";
-    if (options.network) {
-      observerName = options.network;
-    } else if (options.universe) {
-      const universe = conf.universes[options.universe];
+    if (opts.network) {
+      observerName = opts.network;
+    } else if (opts.universe) {
+      const universe = conf.universes[opts.universe];
       if (!universe) {
         throw new Error(
-          `Universe '${options.universe}' not found in config. Available: ${Object.keys(conf.universes).join(", ")}`
+          `Universe '${opts.universe}' not found in config. Available: ${Object.keys(conf.universes).join(", ")}`
         );
       }
       observerName = universe.observer;
     } else {
-      observerName = DEFAULT_OBSERVER;
+      observerName = "local";
     }
 
     if (!observerName) {
