@@ -47,12 +47,12 @@ export const setCmd = new Command("set")
   .addCommands(userCmds.map(getCommandGen(userCmdConfig)));
 
 function genDeployCmd() {
-  const args = [
-    new Argument(`<contract>`, "Artifact ID of the contract"),
+  const cmdArgs = [
+    new Argument(`<artifact>`, "Artifact path of the contract"),
     new Argument(`[args...]`, "Constructor arguments"),
   ];
-  const options = [
-    new Option("--artifact-dir <dir>", "Artifact directory").default("./out"),
+  const cmdOpts = [
+    new Option("-o, --out <dir>", "Artifact output directory").default("./out"),
     ...writeOptions,
     ...outputOptions,
   ];
@@ -106,7 +106,6 @@ function genDeployCmd() {
       args,
       chain: undefined,
     });
-
     console.log(`Transaction sent: ${hash}`);
     console.log("Waiting for confirmation...");
     const receipt = await publicClient.waitForTransactionReceipt({ hash });
@@ -121,8 +120,8 @@ function genDeployCmd() {
   }
 
   return new Command("deploy")
-    .description("Deploy a set contract")
-    .addOptions(options)
-    .addArguments(args)
+    .description("Deploy a contract")
+    .addOptions(cmdOpts)
+    .addArguments(cmdArgs)
     .action(action);
 }
