@@ -1,0 +1,4407 @@
+[
+  {
+    "type": "error",
+    "name": "AdamAddressNotSpecified",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AdamWalletNotSpecified",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AddressEmptyCode",
+    "inputs": [
+      {
+        "name": "target",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "AdjacencyKindNotExist",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AdjacencyOverflow",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AdjacencyUnderflow",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AdjacencyUnordered",
+    "inputs": []
+  },
+  {
+    "type": "event",
+    "name": "AdminChanged",
+    "inputs": [
+      {
+        "name": "previousAdmin",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "newAdmin",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Approval",
+    "inputs": [
+      {
+        "name": "owner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "spender",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "value",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ApprovalForAll",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "operator",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "approved",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "ArcExists",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ArcMismatch",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ArcNotExist",
+    "inputs": []
+  },
+  {
+    "type": "event",
+    "name": "BeaconUpgraded",
+    "inputs": [
+      {
+        "name": "beacon",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "C3FAddressMismatch",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "CallerNotObjectMinter",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "CallerNotObjectOwner",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "CallerNotOmniRegistry",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "CallerNotSetRegistry",
+    "inputs": []
+  },
+  {
+    "type": "event",
+    "name": "ContractURIUpdated",
+    "inputs": [],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Created",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "od",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      },
+      {
+        "name": "elems",
+        "type": "bytes32[]",
+        "indexed": false,
+        "internalType": "bytes32[]"
+      },
+      {
+        "name": "owner",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "CurrentOwnerMismatch",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "DegreeOverflow",
+    "inputs": [
+      {
+        "name": "kind",
+        "type": "uint48",
+        "internalType": "uint48"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "DegreeUnderflow",
+    "inputs": [
+      {
+        "name": "kind",
+        "type": "uint48",
+        "internalType": "uint48"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "Destroyed",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "od",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "ERC1155InsufficientBalance",
+    "inputs": [
+      {
+        "name": "sender",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "balance",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "needed",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC1155InvalidApprover",
+    "inputs": [
+      {
+        "name": "approver",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC1155InvalidArrayLength",
+    "inputs": [
+      {
+        "name": "idsLength",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "valuesLength",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC1155InvalidOperator",
+    "inputs": [
+      {
+        "name": "operator",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC1155InvalidReceiver",
+    "inputs": [
+      {
+        "name": "receiver",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC1155InvalidSender",
+    "inputs": [
+      {
+        "name": "sender",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC1155MissingApprovalForAll",
+    "inputs": [
+      {
+        "name": "operator",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "owner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC1967InvalidAdmin",
+    "inputs": [
+      {
+        "name": "admin",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC1967InvalidBeacon",
+    "inputs": [
+      {
+        "name": "beacon",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC1967InvalidImplementation",
+    "inputs": [
+      {
+        "name": "implementation",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC1967NonPayable",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ERC20InsufficientAllowance",
+    "inputs": [
+      {
+        "name": "spender",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "allowance",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "needed",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC20InsufficientBalance",
+    "inputs": [
+      {
+        "name": "sender",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "balance",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "needed",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC20InvalidApprover",
+    "inputs": [
+      {
+        "name": "approver",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC20InvalidReceiver",
+    "inputs": [
+      {
+        "name": "receiver",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC20InvalidSender",
+    "inputs": [
+      {
+        "name": "sender",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC20InvalidSpender",
+    "inputs": [
+      {
+        "name": "spender",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC721IncorrectOwner",
+    "inputs": [
+      {
+        "name": "sender",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "owner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC721InsufficientApproval",
+    "inputs": [
+      {
+        "name": "operator",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC721InvalidApprover",
+    "inputs": [
+      {
+        "name": "approver",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC721InvalidOperator",
+    "inputs": [
+      {
+        "name": "operator",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC721InvalidOwner",
+    "inputs": [
+      {
+        "name": "owner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC721InvalidReceiver",
+    "inputs": [
+      {
+        "name": "receiver",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC721InvalidSender",
+    "inputs": [
+      {
+        "name": "sender",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC721NonexistentToken",
+    "inputs": [
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "FactoryAddressNotSpecified",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "FactoryAlreadyDeployed",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "FactoryNotDeployed",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "FailedCall",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "FailedDeployment",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "FaithAddressNotSpecified",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "FaithNonceMismatch",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "FaithWalletNotSpecified",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "FeeConfigInvalidRate",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "FeeConfigInvalidRecipient",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "GrantFilterKindInvalid",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "GrantFilterRelationInvalid",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "GrantFilterSetInvalid",
+    "inputs": []
+  },
+  {
+    "type": "event",
+    "name": "GrantFrom",
+    "inputs": [
+      {
+        "name": "tail",
+        "type": "uint128",
+        "indexed": false,
+        "internalType": "uint128"
+      },
+      {
+        "name": "grant",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct RelationGrant",
+        "components": [
+          {
+            "name": "id",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "status",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "initiator",
+            "type": "uint8",
+            "internalType": "enum RelationInitiator"
+          },
+          {
+            "name": "reserved",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "rel",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "kind",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "set",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "extra",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "GrantInitiatorAnyoneExtraNotAllowed",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "GrantInitiatorDelegateAddressInvalid",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "GrantInitiatorEligibleAddressInvalid",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "GrantInitiatorEligibleNotContract",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "GrantInitiatorHolderObjectParamsInvalid",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "GrantInitiatorHolderTokenTypeUnknown",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "GrantInitiatorHolderUniqueParamsInvalid",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "GrantInitiatorHolderValueParamsInvalid",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "GrantInitiatorOwnerExtraNotAllowed",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "GrantInitiatorTypeUnknown",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "GrantNotFound",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "GrantRevoked",
+    "inputs": []
+  },
+  {
+    "type": "event",
+    "name": "GrantTo",
+    "inputs": [
+      {
+        "name": "head",
+        "type": "uint128",
+        "indexed": false,
+        "internalType": "uint128"
+      },
+      {
+        "name": "grant",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct RelationGrant",
+        "components": [
+          {
+            "name": "id",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "status",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "initiator",
+            "type": "uint8",
+            "internalType": "enum RelationInitiator"
+          },
+          {
+            "name": "reserved",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "rel",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "kind",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "set",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "extra",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "HeadKindRejectsRelation",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "HeadSetRejectsTailObject",
+    "inputs": []
+  },
+  {
+    "type": "event",
+    "name": "Initialized",
+    "inputs": [
+      {
+        "name": "version",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "InsufficientBalance",
+    "inputs": [
+      {
+        "name": "balance",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "needed",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidCode",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidData",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidElementRegistryInitData",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidElementType",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidElements",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidFieldIndex",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidId",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidInitial",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidInitialization",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidIntializeArguments",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidKind",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidKindId",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidKindRegistryInitData",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidKindRevision",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidObjectId",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidObjectMinterAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidOmniRegistryInitData",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidOwner",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidRegistryAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidRelateShift",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidRelation",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidRevision",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidSetId",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidSetRegistryInitData",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidSetRevision",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidTokenAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidTokenContract",
+    "inputs": [
+      {
+        "name": "addr",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidTokenData",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidTokenRange",
+    "inputs": [
+      {
+        "name": "begin",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "end",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidTransferAmount",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidUnrelateShift",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidUpgradeArguments",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidUpgradeRevision",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidVersionToUpgrade",
+    "inputs": [
+      {
+        "name": "version",
+        "type": "string",
+        "internalType": "string"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "KindRegistered",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "desc",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      },
+      {
+        "name": "code",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "data",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "elemSpec",
+        "type": "uint8[]",
+        "indexed": false,
+        "internalType": "uint8[]"
+      },
+      {
+        "name": "rels",
+        "type": "uint64[]",
+        "indexed": false,
+        "internalType": "uint64[]"
+      },
+      {
+        "name": "owner",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "KindRevUnavailable",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "KindRevisionNotFound",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "KindRevisionTooHigh",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "KindRevisionTooLow",
+    "inputs": []
+  },
+  {
+    "type": "event",
+    "name": "KindTouched",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "desc",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "KindTransferred",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "desc",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      },
+      {
+        "name": "from",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "to",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "KindUpdated",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "desc",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      },
+      {
+        "name": "code",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "data",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "rels",
+        "type": "uint64[]",
+        "indexed": false,
+        "internalType": "uint64[]"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "KindUpgradeRejected",
+    "inputs": []
+  },
+  {
+    "type": "event",
+    "name": "KindUpgraded",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "desc",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "LengthMismatch",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MerkleProofInvalidMultiproof",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MintCallbackFailed",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MintExceedsMintLimit",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MintIncorrectPayment",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MintInvalidProof",
+    "inputs": []
+  },
+  {
+    "type": "event",
+    "name": "MintPolicyDisabled",
+    "inputs": [
+      {
+        "name": "set",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "policy",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct MintPolicy",
+        "components": [
+          {
+            "name": "index",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "status",
+            "type": "uint8",
+            "internalType": "enum MintPolicyStatus"
+          },
+          {
+            "name": "perm",
+            "type": "uint8",
+            "internalType": "enum MintPermissionType"
+          },
+          {
+            "name": "limit",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "tag",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "recipient",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "currency",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "price",
+            "type": "uint96",
+            "internalType": "uint96"
+          },
+          {
+            "name": "idStart",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "idEnd",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "saleStart",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "saleEnd",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "data",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "MintPolicyEnabled",
+    "inputs": [
+      {
+        "name": "set",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "policy",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct MintPolicy",
+        "components": [
+          {
+            "name": "index",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "status",
+            "type": "uint8",
+            "internalType": "enum MintPolicyStatus"
+          },
+          {
+            "name": "perm",
+            "type": "uint8",
+            "internalType": "enum MintPermissionType"
+          },
+          {
+            "name": "limit",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "tag",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "recipient",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "currency",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "price",
+            "type": "uint96",
+            "internalType": "uint96"
+          },
+          {
+            "name": "idStart",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "idEnd",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "saleStart",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "saleEnd",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "data",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "MintPolicyIndexOverflow",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MintPolicyInvalidContract",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MintPolicyInvalidIDRange",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MintPolicyInvalidMintLimit",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MintPolicyInvalidPermissionData",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MintPolicyInvalidPermissionType",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MintPolicyInvalidPrice",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MintPolicyInvalidRecipient",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MintPolicyInvalidSaleTime",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MintPolicyInvalidStatus",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MintPolicyNotFound",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MintPolicyUnavailable",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MintSpecificIdUnsupported",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MissingPrecompile",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "NoRevisionSpecified",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NoUpgradeTarget",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotInitializing",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotObjectMinter",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotObjectOwner",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotOmniRegistry",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotOwnerNorApproved",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotSetRegistry",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ObjectAlreadyExists",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ObjectExists",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ObjectIdAutoOnly",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ObjectIdNotSpecified",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ObjectIdUnspecified",
+    "inputs": []
+  },
+  {
+    "type": "event",
+    "name": "ObjectMinted",
+    "inputs": [
+      {
+        "name": "set",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "operator",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "to",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "currency",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "payment",
+        "type": "uint96",
+        "indexed": false,
+        "internalType": "uint96"
+      },
+      {
+        "name": "fundsRecipient",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "funds",
+        "type": "uint96",
+        "indexed": false,
+        "internalType": "uint96"
+      },
+      {
+        "name": "feeRecipient",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "fee",
+        "type": "uint96",
+        "indexed": false,
+        "internalType": "uint96"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "ObjectNotExist",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ObjectNotFound",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ObjectRevisionNotArchived",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ObjectRevisionTooHigh",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OnSetRegisterRejected",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OnSetRegisterReverted",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OnSetTouchRejected",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OnSetTouchReverted",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OnSetUpdateRejected",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OnSetUpdateReverted",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OnSetUpgradeRejected",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OnSetUpgradeReverted",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "Overflow",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OwnableInvalidOwner",
+    "inputs": [
+      {
+        "name": "owner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "OwnableUnauthorizedAccount",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "OwnershipTransferred",
+    "inputs": [
+      {
+        "name": "previousOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "newOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "RecordExists",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "RecordNotActive",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "RecordNotExist",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ReentrancyGuardReentrantCall",
+    "inputs": []
+  },
+  {
+    "type": "event",
+    "name": "Related",
+    "inputs": [
+      {
+        "name": "head",
+        "type": "uint128",
+        "indexed": false,
+        "internalType": "uint128"
+      },
+      {
+        "name": "desc",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      },
+      {
+        "name": "arc",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RelationRegistered",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "desc",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      },
+      {
+        "name": "code",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "data",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "rule",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct RelationRule",
+        "components": [
+          {
+            "name": "version",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "relateShift",
+            "type": "uint8",
+            "internalType": "enum RelationOwnerShift"
+          },
+          {
+            "name": "terminator",
+            "type": "uint8",
+            "internalType": "enum RelationTerminator"
+          },
+          {
+            "name": "unrelateShift",
+            "type": "uint8",
+            "internalType": "enum RelationOwnerShift"
+          },
+          {
+            "name": "unrelateDelay",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "extra",
+            "type": "bytes20",
+            "internalType": "bytes20"
+          }
+        ]
+      },
+      {
+        "name": "adjs",
+        "type": "tuple[]",
+        "indexed": false,
+        "internalType": "struct Adjacency[]",
+        "components": [
+          {
+            "name": "degs",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "kind",
+            "type": "uint48",
+            "internalType": "uint48"
+          }
+        ]
+      },
+      {
+        "name": "owner",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "RelationRejectsTailKind",
+    "inputs": []
+  },
+  {
+    "type": "event",
+    "name": "RelationTouched",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "desc",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RelationTransferred",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "desc",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      },
+      {
+        "name": "from",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "to",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RelationUpdated",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "desc",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      },
+      {
+        "name": "data",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RelationUpgraded",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "desc",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "RevisionNotExist",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "rev",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "RevisionNotFound",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "RevisionNotStored",
+    "inputs": []
+  },
+  {
+    "type": "event",
+    "name": "RevokeFrom",
+    "inputs": [
+      {
+        "name": "tail",
+        "type": "uint128",
+        "indexed": false,
+        "internalType": "uint128"
+      },
+      {
+        "name": "grantId",
+        "type": "uint32",
+        "indexed": false,
+        "internalType": "uint32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RevokeTo",
+    "inputs": [
+      {
+        "name": "head",
+        "type": "uint128",
+        "indexed": false,
+        "internalType": "uint128"
+      },
+      {
+        "name": "grantId",
+        "type": "uint32",
+        "indexed": false,
+        "internalType": "uint32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "SafeCastOverflowedIntDowncast",
+    "inputs": [
+      {
+        "name": "bits",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "value",
+        "type": "int256",
+        "internalType": "int256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SafeCastOverflowedIntToUint",
+    "inputs": [
+      {
+        "name": "value",
+        "type": "int256",
+        "internalType": "int256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SafeCastOverflowedUintDowncast",
+    "inputs": [
+      {
+        "name": "bits",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "value",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SafeCastOverflowedUintToInt",
+    "inputs": [
+      {
+        "name": "value",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SafeERC20FailedDecreaseAllowance",
+    "inputs": [
+      {
+        "name": "spender",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "currentAllowance",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "requestedDecrease",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SafeERC20FailedOperation",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SelfApproval",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "SetContractAlreadyRegistered",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "SetContractNoCode",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "SetContractNotIObjectInteractionHook",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "SetContractNotISet",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "SetContractNotRegistered",
+    "inputs": []
+  },
+  {
+    "type": "event",
+    "name": "SetRegistered",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "desc",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      },
+      {
+        "name": "code",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "data",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "owner",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "SetRevisionNotFound",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "SetRevisionTooHigh",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "SetRevisionTooLow",
+    "inputs": []
+  },
+  {
+    "type": "event",
+    "name": "SetTouched",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "desc",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SetUpdated",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "desc",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      },
+      {
+        "name": "data",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "SetUpgradeRejected",
+    "inputs": []
+  },
+  {
+    "type": "event",
+    "name": "SetUpgraded",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "desc",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "StringsInsufficientHexLength",
+    "inputs": [
+      {
+        "name": "value",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "length",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "StringsInvalidAddressFormat",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "StringsInvalidChar",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "TokenNotExist",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "TooManyElementTypes",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "TooManyRelations",
+    "inputs": []
+  },
+  {
+    "type": "event",
+    "name": "Touched",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "od",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Transfer",
+    "inputs": [
+      {
+        "name": "from",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "to",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "value",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "TransferBatch",
+    "inputs": [
+      {
+        "name": "operator",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "from",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "to",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "ids",
+        "type": "uint256[]",
+        "indexed": false,
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "values",
+        "type": "uint256[]",
+        "indexed": false,
+        "internalType": "uint256[]"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "TransferFromIncorrectOwner",
+    "inputs": []
+  },
+  {
+    "type": "event",
+    "name": "TransferSingle",
+    "inputs": [
+      {
+        "name": "operator",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "from",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "to",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "id",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "value",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Transferred",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "od",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      },
+      {
+        "name": "from",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "to",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "URI",
+    "inputs": [
+      {
+        "name": "value",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "id",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "UUPSUnauthorizedCallContext",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UUPSUnsupportedProxiableUUID",
+    "inputs": [
+      {
+        "name": "slot",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "Unauthorized",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnauthorizedAccess",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "vistor",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "Underflow",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "Unimplemented",
+    "inputs": []
+  },
+  {
+    "type": "event",
+    "name": "UniqueRegistered",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "desc",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      },
+      {
+        "name": "code",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "data",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "spec",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct TokenSpec",
+        "components": [
+          {
+            "name": "std",
+            "type": "uint8",
+            "internalType": "enum TokenStandard"
+          },
+          {
+            "name": "decimals",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "symbol",
+            "type": "bytes30",
+            "internalType": "bytes30"
+          }
+        ]
+      },
+      {
+        "name": "owner",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "UniqueTouched",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "desc",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "UniqueTransferred",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "desc",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      },
+      {
+        "name": "from",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "to",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "UniqueUpdated",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "desc",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      },
+      {
+        "name": "data",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "spec",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct TokenSpec",
+        "components": [
+          {
+            "name": "std",
+            "type": "uint8",
+            "internalType": "enum TokenStandard"
+          },
+          {
+            "name": "decimals",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "symbol",
+            "type": "bytes30",
+            "internalType": "bytes30"
+          }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "UniqueUpgraded",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "desc",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "UnknownObjectKind",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnknownObjectSet",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnrelateLocked",
+    "inputs": []
+  },
+  {
+    "type": "event",
+    "name": "Unrelated",
+    "inputs": [
+      {
+        "name": "head",
+        "type": "uint128",
+        "indexed": false,
+        "internalType": "uint128"
+      },
+      {
+        "name": "desc",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      },
+      {
+        "name": "arc",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "UnsupportedHoldingState",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnsupportedKindId",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnsupportedKindRevision",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnsupportedSetId",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnsupportedSetRevision",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnsupportedTokenStandard",
+    "inputs": [
+      {
+        "name": "std",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "Updated",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "od",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      },
+      {
+        "name": "elems",
+        "type": "bytes32[]",
+        "indexed": false,
+        "internalType": "bytes32[]"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Upgraded",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "od",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ValueRegistered",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "desc",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      },
+      {
+        "name": "code",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "data",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "spec",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct TokenSpec",
+        "components": [
+          {
+            "name": "std",
+            "type": "uint8",
+            "internalType": "enum TokenStandard"
+          },
+          {
+            "name": "decimals",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "symbol",
+            "type": "bytes30",
+            "internalType": "bytes30"
+          }
+        ]
+      },
+      {
+        "name": "owner",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ValueTouched",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "desc",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ValueTransferred",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "desc",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      },
+      {
+        "name": "from",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "to",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ValueUpdated",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "desc",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      },
+      {
+        "name": "data",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "spec",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct TokenSpec",
+        "components": [
+          {
+            "name": "std",
+            "type": "uint8",
+            "internalType": "enum TokenStandard"
+          },
+          {
+            "name": "decimals",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "symbol",
+            "type": "bytes30",
+            "internalType": "bytes30"
+          }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ValueUpgraded",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "desc",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Descriptor",
+        "components": [
+          {
+            "name": "traits",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "setRev",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "kindId",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "setId",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "ZeroAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroKindId",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroKindRegistry",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroObjectMinter",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroSetId",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroSetRegistry",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroSetRev",
+    "inputs": []
+  },
+  {
+    "type": "event",
+    "name": "log",
+    "inputs": [
+      {
+        "name": "",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "log_address",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "log_array",
+    "inputs": [
+      {
+        "name": "val",
+        "type": "uint256[]",
+        "indexed": false,
+        "internalType": "uint256[]"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "log_bytes",
+    "inputs": [
+      {
+        "name": "",
+        "type": "bytes",
+        "indexed": false,
+        "internalType": "bytes"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "log_bytes32",
+    "inputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "log_int",
+    "inputs": [
+      {
+        "name": "",
+        "type": "int256",
+        "indexed": false,
+        "internalType": "int256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "log_named_address",
+    "inputs": [
+      {
+        "name": "key",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "val",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "log_named_array",
+    "inputs": [
+      {
+        "name": "key",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "val",
+        "type": "uint256[]",
+        "indexed": false,
+        "internalType": "uint256[]"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "log_named_bytes",
+    "inputs": [
+      {
+        "name": "key",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "val",
+        "type": "bytes",
+        "indexed": false,
+        "internalType": "bytes"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "log_named_bytes32",
+    "inputs": [
+      {
+        "name": "key",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "val",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "log_named_decimal_int",
+    "inputs": [
+      {
+        "name": "key",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "val",
+        "type": "int256",
+        "indexed": false,
+        "internalType": "int256"
+      },
+      {
+        "name": "decimals",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "log_named_decimal_uint",
+    "inputs": [
+      {
+        "name": "key",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "val",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "decimals",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "log_named_int",
+    "inputs": [
+      {
+        "name": "key",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "val",
+        "type": "int256",
+        "indexed": false,
+        "internalType": "int256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "log_named_string",
+    "inputs": [
+      {
+        "name": "key",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "val",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "log_named_uint",
+    "inputs": [
+      {
+        "name": "key",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "val",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "log_string",
+    "inputs": [
+      {
+        "name": "",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "log_uint",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "logs",
+    "inputs": [
+      {
+        "name": "",
+        "type": "bytes",
+        "indexed": false,
+        "internalType": "bytes"
+      }
+    ],
+    "anonymous": false
+  }
+]

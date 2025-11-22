@@ -1,50 +1,89 @@
 import { Argument, Command, Option } from "commander";
-import { Address } from "viem";
-import { abi, AbiFunctionDoc } from "../abi.js";
+import { Address, PublicClient } from "viem";
 import { Universe } from "../config.js";
-import { CommandGenConfig, CommandGenDefaults, getCommandGen, makeFuncName } from "../cmdgen.js";
 import { outputOptions, writeOptions } from "../commander-patch.js";
 import { FromOpts } from "../from-opts.js";
 import { coerceValue, loadJson } from "../utils.js";
-import { getAbi, getArtifactPath, getCreationCode } from "../artifact.js";
+import { getAbiFromArtifact, getArtifactPath, getCreationCode } from "../artifact.js";
 import { Logger } from "../logger.js";
+import { AbiCommandConfig, genAbiCommand } from "../abicmd.js";
+import { getFuncs, getAbi, AbiFunctionDoc } from "../abi2.js";
+import { parseAddress } from "../parsers.js";
+import { makeFuncName } from "../cmdgen.js";
 
-const adminCmdConfig: CommandGenConfig = {
-  getFuncName: (cmdName: string) => `${cmdName}Set`,
-  getAbiFuncs: (funcName: string) => (abi.funcs.setRegistryAdmin as AbiFunctionDoc[]).filter((i) => i.name == funcName),
-  // eslint-disable-next-line
-  getAbiNonFuncs: (funcName: string) => abi.nonFuncs.setRegistry,
-  // eslint-disable-next-line
-  getContract: (conf: Universe, args: any[], abiFunc: AbiFunctionDoc) => args[0] as Address,
-  // eslint-disable-next-line
-  getFuncArgs: (args: any[], abiFunc: AbiFunctionDoc) => args.slice(1),
+const abiFuncs = getFuncs("ISetRegistry") as AbiFunctionDoc[];
+const abiFuncsAdmin = getFuncs("SetRegistryAdmin") as AbiFunctionDoc[];
 
-  getCmdArgs: (abiFunc: AbiFunctionDoc) => [
-    new Argument(`<contract>`, "address of the set contract"),
-    ...CommandGenDefaults.getCmdArgs(abiFunc),
-  ],
+async function getAbc(
+  conf: Universe,
+  client: PublicClient,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  args: any[],
+  id: bigint,
+  altFuncName: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<[Address, any[], AbiFunctionDoc | undefined]> {
+  if (id >= 17) {
+    const addr = await getSetContract(id, client, conf);
+    return [addr, args, undefined];
+  } else {
+    const abiFunc = abiFuncs.filter((i) => i.name == altFuncName)[0];
+    return [conf.contracts.SetRegistry as Address, args, abiFunc];
+  }
+}
+
+const cmdConfig: AbiCommandConfig = {
+  descs: {
+    upgradeSet: "Upgrade an existing set",
+  },
+  params: {
+    ".rev0": () => new Option(`--rev <rev0>`).default(0),
+    ".krev0": () => new Option(`--krev <rev0>`).default(0),
+    ".krev": () => new Option(`--krev <rev0>`).default(0),
+    ".srev0": () => new Option(`--srev <rev0>`).default(0),
+    ".srev": () => new Option(`--srev <rev0>`).default(0),
+    ".kindRev": () => new Option(`--krev <rev0>`).default(0),
+    ".setRev": () => new Option(`--srev <rev0>`).default(0),
+    ".kindRev0": () => new Option(`--krev <rev0>`, "New kind revision").default(0),
+    ".setRev0": () => new Option(`--srev <rev0>`, "New set revision").default(0),
+    "registerSet.PREPEND": () => new Argument(`<contract>`, "Contract address").argParser(parseAddress),
+  },
+  // eslint-disable-next-line
+  prepare: async (conf: Universe, client: PublicClient, args: any[], funcName?: string) => {
+    if (funcName == "registerSet") {
+      return [args[0] as Address, args.slice(1), undefined];
+    } else if (funcName == "updateSet") {
+      return await getAbc(conf, client, args, args[0], "setUpdate");
+    } else if (funcName == "upgradeSet") {
+      return await getAbc(conf, client, args, args[0], "setUpgrade");
+    } else if (funcName == "touchSet") {
+      return await getAbc(conf, client, args, args[0], "setTouch");
+    } else {
+      return [conf.contracts.SetRegistry as Address, args, undefined];
+    }
+  },
 };
 
-const userCmdConfig: CommandGenConfig = {
-  getFuncName: (cmdName: string) => makeFuncName(cmdName, `set`),
-  getAbiFuncs: (funcName: string) => (abi.funcs.setRegistry as AbiFunctionDoc[]).filter((i) => i.name == funcName),
-  // eslint-disable-next-line
-  getAbiNonFuncs: (funcName: string) => abi.nonFuncs.setRegistry,
-  // eslint-disable-next-line
-  getContract: (conf: Universe, args: any[], abiFunc: AbiFunctionDoc) => conf.contracts.SetRegistry as Address,
-};
+const adminCmds = "register,update,upgrade,touch".split(",").map((name) => {
+  const funcName = `${name}Set`;
+  const abiFunc = abiFuncsAdmin.filter((i) => i.name == funcName)[0];
+  return genAbiCommand(name, abiFunc, cmdConfig);
+});
 
-const userCmds = "owner,descriptor,snapshot".split(",");
-
-const adminCmds = "register,update,upgrade,touch".split(",");
+const readCmds = "owner,descriptor,snapshot".split(",").map((name) => {
+  const funcName = makeFuncName(name, "set");
+  const abiFunc = abiFuncs.filter((i) => i.name == funcName)[0];
+  return genAbiCommand(name, abiFunc, cmdConfig);
+});
 
 const deployCmd = genDeployCmd();
 
 export const setCmd = new Command("set")
   .description("manage sets")
   .addCommand(deployCmd)
-  .addCommands(adminCmds.map(getCommandGen(adminCmdConfig)))
-  .addCommands(userCmds.map(getCommandGen(userCmdConfig)));
+  // .addCommands(adminCmds.map(getCommandGen(adminCmdConfig)))
+  .addCommands(adminCmds)
+  .addCommands(readCmds);
 
 function genDeployCmd() {
   const cmdArgs = [
@@ -63,7 +102,7 @@ function genDeployCmd() {
     const userArgs = cmd.args.slice(1);
 
     const artifact = loadJson(artifactInfo.file);
-    const abi = getAbi(artifact);
+    const abi = getAbiFromArtifact(artifact);
     const bytecode = getCreationCode(artifact);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ctor = (abi as any[]).find((i) => i.type === "constructor");
@@ -120,8 +159,19 @@ function genDeployCmd() {
   }
 
   return new Command("deploy")
-    .description("Deploy a contract")
+    .description("Deploy a set contract")
     .addOptions(cmdOpts)
     .addArguments(cmdArgs)
     .action(action);
+}
+
+async function getSetContract(set: bigint, publicClient: PublicClient, conf: Universe) {
+  const abi = getAbi("ISetRegistry");
+  const address = await publicClient.readContract({
+    address: conf.contracts.SetRegistry as Address,
+    abi,
+    functionName: "setContract",
+    args: [set],
+  });
+  return address as unknown as Address;
 }

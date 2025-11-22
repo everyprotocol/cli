@@ -1,7 +1,7 @@
 import { Argument, Option, Command } from "commander";
-import { Address, PublicClient, SimulateContractParameters } from "viem";
-import { parseAbiItem, type AbiFunction, type AbiParameter, erc1155Abi, erc721Abi } from "viem";
-import { abi } from "../abi.js";
+import { Address, parseAbi, PublicClient, SimulateContractParameters } from "viem";
+import { parseAbiItem, type AbiFunction, type AbiParameter } from "viem";
+import { getAbi, getNonFuncs } from "../abi2.js";
 import { submitSimulation } from "../ethereum.js";
 import { Logger } from "../logger.js";
 import {
@@ -23,6 +23,16 @@ const sidArg = new Argument("<sid>", "Object SID, in form of {set}.{id}").argPar
 const tailArg = new Argument("<tail>", "Tail object, in form of [[data.]grant.]set.id").argParser(parseNode4);
 const relArg = new Argument("<rel>", "Relation ID").argParser(parseBigInt);
 const headArg = new Argument("<head>", "Head object, in form of [grant.]set.id").argParser(parseNode3);
+
+const otherAbi = [
+  ...parseAbi([
+    "function mint(address to, address set, uint64 id, bytes memory data, bytes memory auth, uint32 policy) payable",
+    "function mint(address to, uint64 id0, bytes calldata data) payable",
+    "function relate(uint256 tail, uint64 rel, uint256 head)",
+    "function unrelate(uint256 tail, uint64 rel, uint256 head)",
+  ]),
+  ...getNonFuncs(),
+];
 
 export const objectCmd = new Command("object")
   .description("manage objects")
@@ -53,12 +63,12 @@ function genUpgradeCmd() {
     const { set, id } = this.processedArgs[0];
 
     const address = await getSetContract(set, publicClient, conf);
-    const abi_ = [...abi.funcs.setContract, ...abi.nonFuncs.setContract];
     const functionName = "upgrade";
     const args = [id, opts.krev ?? 0, opts.srev ?? 0];
     const account = walletClient.account;
 
-    const simulation = { address, abi: abi_, functionName, args, account } as SimulateContractParameters;
+    const abi = getAbi("ISet");
+    const simulation = { address, abi, functionName, args, account } as SimulateContractParameters;
     await submitSimulation(simulation, publicClient, walletClient, new Logger(opts));
   }
 
@@ -79,12 +89,12 @@ function genTouchCmd() {
     const { set, id } = this.processedArgs[0];
 
     const address = await getSetContract(set, publicClient, conf);
-    const abi_ = [...abi.funcs.setContract, ...abi.nonFuncs.setContract];
     const functionName = "touch";
     const args = [id];
     const account = walletClient.account;
 
-    const simulation = { address, abi: abi_, functionName, args, account } as SimulateContractParameters;
+    const abi = getAbi("ISet");
+    const simulation = { address, abi, functionName, args, account } as SimulateContractParameters;
     await submitSimulation(simulation, publicClient, walletClient, new Logger(opts));
   }
 
@@ -101,12 +111,12 @@ function genTransferCmd() {
     const { set, id } = this.processedArgs[0];
 
     const address = await getSetContract(set, publicClient, conf);
-    const abi_ = [...abi.funcs.setContract, ...abi.nonFuncs.setContract];
     const functionName = "transfer";
     const args = [id, this.processedArgs[1]];
     const account = walletClient.account;
 
-    const simulation = { address, abi: abi_, functionName, args, account } as SimulateContractParameters;
+    const abi = getAbi("ISet");
+    const simulation = { address, abi, functionName, args, account } as SimulateContractParameters;
     await submitSimulation(simulation, publicClient, walletClient, new Logger(opts));
   }
 
@@ -144,14 +154,21 @@ function genMintCmd() {
     if (!opts.minter) {
       const address = await getSetContract(set, publicClient, conf);
       const args = [to, id, data];
-      simulation = { address, abi: abi.setMint, functionName, args, value, account } as SimulateContractParameters;
+      simulation = { address, abi: otherAbi, functionName, args, value, account } as SimulateContractParameters;
     } else {
       const setAddress = await getSetContract(set, publicClient, conf);
       const address = conf.contracts.ObjectMinter as Address;
       const authData = opts.auth ?? "0x";
       const policy = opts.policy ?? 0;
       const args = [to, setAddress, id, data, authData, policy];
-      simulation = { address, abi: abi.minterMint, functionName, args, value, account } as SimulateContractParameters;
+      simulation = {
+        address,
+        abi: otherAbi,
+        functionName,
+        args,
+        value,
+        account,
+      } as SimulateContractParameters;
     }
     await submitSimulation(simulation, publicClient, walletClient, new Logger(opts));
   }
@@ -179,7 +196,7 @@ function genSendCmd() {
     const abiFunc: AbiFunction = item as AbiFunction;
     const params = abiFunc.inputs ?? [];
 
-    const args0 = this.args.slice(0);
+    const args0 = this.args.slice(1);
     if (args0.length !== params.length)
       throw new Error(`Invalid argument count: expected ${params.length}, got ${args0.length}`);
 
@@ -196,7 +213,7 @@ function genSendCmd() {
 
     const simulation = {
       address,
-      abi: [abiFunc, ...abi.nonFuncs.setContract, ...erc1155Abi, ...erc721Abi],
+      abi: [abiFunc, ...getNonFuncs()],
       functionName: abiFunc.name,
       args,
       account,
@@ -223,8 +240,9 @@ function genOwnerCmd() {
     const { conf, publicClient } = FromOpts.toReadEthereum(opts);
     const address = await getSetContract(set, publicClient, conf);
     const args = [id];
-    const abi_ = [...abi.funcs.setContract, ...abi.nonFuncs.setContract];
-    const result = await publicClient.readContract({ address, abi: abi_, functionName: cmdName, args });
+
+    const abi = getAbi("ISet");
+    const result = await publicClient.readContract({ address, abi, functionName: cmdName, args });
     const console = new Logger(opts);
     console.log(result);
     console.result(result);
@@ -248,8 +266,9 @@ function genDescriptorCmd() {
     const { conf, publicClient } = FromOpts.toReadEthereum(opts);
     const address = await getSetContract(set, publicClient, conf);
     const args = [id, opts.rev ?? 0];
-    const abi_ = [...abi.funcs.setContract, ...abi.nonFuncs.setContract];
-    const result = await publicClient.readContract({ address, abi: abi_, functionName: cmdName, args });
+
+    const abi = getAbi("ISet");
+    const result = await publicClient.readContract({ address, abi, functionName: cmdName, args });
     const console = new Logger(opts);
     console.log(result);
     console.result(result);
@@ -277,8 +296,9 @@ function genSnapshotCmd() {
     const { conf, publicClient } = FromOpts.toReadEthereum(opts);
     const address = await getSetContract(set, publicClient, conf);
     const args = [id, opts.rev ?? 0];
-    const abi_ = [...abi.funcs.setContract, ...abi.nonFuncs.setContract];
-    const result = await publicClient.readContract({ address, abi: abi_, functionName: cmdName, args });
+
+    const abi = getAbi("ISet");
+    const result = await publicClient.readContract({ address, abi, functionName: cmdName, args });
     const console = new Logger(opts);
     console.log(result);
     console.result(result);
@@ -306,10 +326,11 @@ function genUriCmd() {
     const { conf, publicClient } = FromOpts.toReadEthereum(opts);
     const address = await getSetContract(set, publicClient, conf);
     const args = [] as any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
-    const abi_ = [...abi.funcs.setContract, ...abi.nonFuncs.setContract];
+
+    const abi = getAbi("ISet");
     const result0 = (await publicClient.readContract({
       address,
-      abi: abi_,
+      abi,
       functionName: cmdName,
       args,
     })) as any as string; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -332,7 +353,7 @@ function genRelateCmd() {
     const { publicClient, walletClient, conf } = await FromOpts.toWriteEthereum(opts);
     const simulation = {
       address: conf.contracts.OmniRegistry as Address,
-      abi: abi.relation,
+      abi: otherAbi,
       functionName: "relate",
       args: this.processedArgs,
       account: walletClient.account,
@@ -357,7 +378,7 @@ function genUnrelateCmd() {
     const { publicClient, walletClient, conf } = await FromOpts.toWriteEthereum(opts);
     const simulation = {
       address: conf.contracts.OmniRegistry as Address,
-      abi: abi.relation,
+      abi: otherAbi,
       functionName: "unrelate",
       args: this.processedArgs,
       account: walletClient.account,
@@ -378,11 +399,12 @@ function interpolate(tmpl: string, id: bigint, rev: number) {
 }
 
 async function getSetContract(set: bigint, publicClient: PublicClient, conf: Universe) {
+  const abi = getAbi("ISetRegistry");
   const address = await publicClient.readContract({
     address: conf.contracts.SetRegistry as Address,
-    abi: abi.setContract,
+    abi,
     functionName: "setContract",
     args: [set],
   });
-  return address as Address;
+  return address as unknown as Address;
 }

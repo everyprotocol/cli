@@ -49,7 +49,7 @@ export function getCreationCode(artifact: any): `0x${string}` {
 
 /** Get ABI array from a Foundry/solc artifact JSON object. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getAbi(artifact: any): any[] {
+export function getAbiFromArtifact(artifact: any): any[] {
   const abi = artifact?.abi;
   if (!Array.isArray(abi)) throw new Error("abi missing or not an array");
   return abi;

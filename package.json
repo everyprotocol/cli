@@ -9,6 +9,7 @@
   "files": [
     "dist/",
     "abis/",
+    "abis2/",
     ".every.toml",
     "LICENSE",
     "README.md"
