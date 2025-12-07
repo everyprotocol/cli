@@ -1,11 +1,10 @@
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import "@polkadot/api-augment/substrate";
 import * as fs from "fs";
 import path from "path";
 import columify from "columnify";
 import { j11String, loadBinary, loadJson } from "../utils.js";
 import { submitTransaction } from "../substrate.js";
-import { network, universe } from "../commander-patch.js";
 import { Logger } from "../logger.js";
 import {
   compileEnumCsv,
@@ -16,6 +15,9 @@ import {
   parseFileSpec,
   specToInput,
 } from "../matter.js";
+
+const universe = new Option("-u, --universe <universe>", "Universe name");
+const network = new Option("-n, --network <network>", "Network name");
 
 const matterRegisterCmd = new Command("register")
   .description("Register matters")
